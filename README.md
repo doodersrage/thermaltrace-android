@@ -56,11 +56,18 @@ app/src/main/java/dev/thermaltrace/android/
   ui/account/    Display prefs (°C, theme), push, sign out
 ```
 
-## Next ideas
+## Play Store release
 
-- SSE live stream (`/api/home/readings/stream`)
-- History charts (needs a JSON history API on the server)
-- Alert event list / acknowledge
+See [`play/README.md`](play/README.md) for the full checklist, listing copy, and Data safety answers.
+
+Quick path:
+
+1. Upload key is created once via `./scripts/create-upload-keystore.sh` (already done locally; files are gitignored — **back them up**).
+2. Ensure `local.properties` and `app/google-services.json` have production values.
+3. `./gradlew :app:bundleRelease` → `app/build/outputs/bundle/release/app-release.aab`
+4. Upload AAB + assets from `play/assets/` in Play Console (internal testing first).
+
+Privacy policy URL for Console: https://thermaltrace.dev/privacy
 
 ## Push notifications (FCM)
 

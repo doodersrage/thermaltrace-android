@@ -14,8 +14,11 @@
 app/build/
 **/build/
 keystore.properties
+upload-keystore.jks
 *.jks
 *.keystore
+play/screenshots/*
+!play/screenshots/README.md
 .kotlin/
 
 # Firebase — download from Console; never commit
