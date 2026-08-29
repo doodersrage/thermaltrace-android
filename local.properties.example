@@ -9,3 +9,13 @@ supabase.anonKey=YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY
 
 # API host the app talks to (no on-device sensing)
 thermaltrace.baseUrl=https://thermaltrace.dev
+
+# Firebase Cloud Messaging (optional until you want native push)
+# From Firebase Console → Project settings → Your apps → Android
+# Register BOTH applicationIds if you use a debug suffix:
+#   release: dev.thermaltrace.android
+#   debug:   dev.thermaltrace.android.debug
+firebase.projectId=
+firebase.applicationId=1:123456789:android:abcdef
+firebase.apiKey=
+firebase.gcmSenderId=

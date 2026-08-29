@@ -1,6 +1,7 @@
 package dev.thermaltrace.android.data.auth
 
 import dev.thermaltrace.android.data.api.SessionCookieJar
+import dev.thermaltrace.android.data.push.PushRegistrar
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
@@ -15,6 +16,7 @@ class AuthRepository(
     supabaseAnonKey: String,
     private val sessionStore: SessionStore,
     private val cookieJar: SessionCookieJar,
+    private val pushRegistrar: PushRegistrar,
 ) {
     private val client: SupabaseClient? = if (
         supabaseUrl.isBlank() || supabaseAnonKey.isBlank()
@@ -50,6 +52,7 @@ class AuthRepository(
                 ),
             )
         }
+        runCatching { pushRegistrar.registerWithServer() }
     }
 
     suspend fun signIn(email: String, password: String): Result<Unit> {
@@ -73,10 +76,12 @@ class AuthRepository(
             )
             sessionStore.save(tokens)
             cookieJar.syncFromSession()
+            runCatching { pushRegistrar.registerWithServer() }
         }
     }
 
     suspend fun signOut() {
+        runCatching { pushRegistrar.unregisterFromServer() }
         runCatching { client?.auth?.signOut() }
         sessionStore.clear()
         cookieJar.clear()

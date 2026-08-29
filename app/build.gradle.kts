@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.gms.google-services")
 }
 
 val localProperties = Properties().apply {
@@ -37,6 +38,18 @@ android {
             "THERMALTRACE_BASE_URL",
             "\"${localProp("thermaltrace.baseUrl", "https://thermaltrace.dev")}\"",
         )
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${localProp("firebase.projectId")}\"")
+        buildConfigField(
+            "String",
+            "FIREBASE_APPLICATION_ID",
+            "\"${localProp("firebase.applicationId")}\"",
+        )
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${localProp("firebase.apiKey")}\"")
+        buildConfigField(
+            "String",
+            "FIREBASE_GCM_SENDER_ID",
+            "\"${localProp("firebase.gcmSenderId")}\"",
+        )
     }
 
     buildTypes {
@@ -48,7 +61,6 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
     }
@@ -106,6 +118,10 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation(platform("io.ktor:ktor-bom:3.0.3"))
     implementation("io.ktor:ktor-client-android")
+
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

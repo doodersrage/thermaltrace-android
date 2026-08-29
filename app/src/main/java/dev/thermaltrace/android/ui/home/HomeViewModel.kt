@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.thermaltrace.android.data.api.ReadingsRepository
-import dev.thermaltrace.android.data.auth.AuthRepository
 import dev.thermaltrace.android.data.model.HomeReadingsResponse
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
@@ -22,13 +24,14 @@ data class HomeUiState(
 
 class HomeViewModel(
     private val readingsRepository: ReadingsRepository,
-    private val authRepository: AuthRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private var pollJob: Job? = null
 
     init {
         refresh(initial = true)
+        startPolling()
     }
 
     fun selectSpace(space: String?) {
@@ -68,22 +71,27 @@ class HomeViewModel(
         }
     }
 
-    fun signOut(onSignedOut: () -> Unit) {
-        viewModelScope.launch {
-            authRepository.signOut()
-            onSignedOut()
+    private fun startPolling() {
+        pollJob?.cancel()
+        pollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(30_000)
+                refresh(initial = false)
+            }
         }
     }
 
+    override fun onCleared() {
+        pollJob?.cancel()
+        super.onCleared()
+    }
+
     companion object {
-        fun factory(
-            readingsRepository: ReadingsRepository,
-            authRepository: AuthRepository,
-        ): ViewModelProvider.Factory =
+        fun factory(readingsRepository: ReadingsRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    HomeViewModel(readingsRepository, authRepository) as T
+                    HomeViewModel(readingsRepository) as T
             }
     }
 }

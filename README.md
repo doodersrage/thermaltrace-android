@@ -23,11 +23,13 @@ thermaltrace.baseUrl=https://thermaltrace.dev
 
 Use the **anon / publishable** key only — never the service role key.
 
-3. Sync Gradle, then Run on an emulator or device.
+3. **Gradle JDK:** Android Studio’s bundled JBR may be Java 25, which is too new for Gradle 8.11. In **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK**, pick **17** (or `/usr/lib/jvm/java-17-openjdk` on Linux). Then Sync.
+4. Run on an emulator or device.
 
-From the CLI (with Android SDK installed):
+From the CLI (with Android SDK installed and JDK 17):
 
 ```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk   # Linux; use a JDK 17–23 install
 ./gradlew :app:assembleDebug
 ```
 
@@ -35,25 +37,40 @@ From the CLI (with Android SDK installed):
 
 1. Email/password via Supabase (`signInWithPassword`).
 2. Access + refresh tokens are stored locally and attached as cookies on `thermaltrace.dev` requests (same contract as the web dashboard).
-3. Home screen calls `GET https://thermaltrace.dev/api/home/readings?save=0`.
+3. Home: `GET /api/home/readings?save=0`
+4. Settings load: `GET /api/user/export` (preferences + alert settings)
+5. Settings save: form `POST` to `/api/user/preferences`, `/api/user/alert-settings`, `/api/user/alert-snooze`
 
 ## Project layout
 
 ```
 app/src/main/java/dev/thermaltrace/android/
   data/auth/     Session store + Supabase sign-in
-  data/api/      Cookie jar, Retrofit, readings repo
-  data/model/    JSON models for home readings
-  ui/login/      Sign-in screen
-  ui/home/       Live sensor list
+  data/api/      Cookie jar, Retrofit, readings + settings
+  data/model/    JSON models
+  ui/login/      Sign-in
+  ui/home/       Live readings
+  ui/devices/    Device list, rename, space
+  ui/alerts/     Alert thresholds, channels, snooze
+  ui/household/  Members, rename, invite, switch
+  ui/account/    Display prefs (°C, theme), push, sign out
 ```
 
 ## Next ideas
 
 - SSE live stream (`/api/home/readings/stream`)
-- History charts (needs a JSON history API on the server, or reuse export endpoints)
-- Alert list / acknowledge
-- Deep link to share tokens (`/api/share/{token}/readings`)
+- History charts (needs a JSON history API on the server)
+- Alert event list / acknowledge
+
+## Push notifications (FCM)
+
+Pro accounts can receive the same **Push** channel on browser (VAPID) and this app (FCM).
+
+1. Create a Firebase project and add Android apps for `dev.thermaltrace.android` and `dev.thermaltrace.android.debug`.
+2. Download `google-services.json` into `app/` (gitignored). You can start from `app/google-services.json.example`.
+3. Optionally also set `firebase.*` keys in `local.properties` if you are not using the Google Services plugin.
+4. On the server (`garage-temp` / thermaltrace.dev), set `FCM_SERVICE_ACCOUNT_JSON` (or `FCM_*` split fields), run the `fcm_device_tokens` migration, and `pnpm secrets:push`.
+5. Sign in on the app → **Account → Enable push**, and on the website enable **Push (browser + Android)** under Alerts.
 
 ## License
 

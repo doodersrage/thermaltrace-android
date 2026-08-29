@@ -17,3 +17,6 @@ keystore.properties
 *.jks
 *.keystore
 .kotlin/
+
+# Firebase — download from Console; never commit
+app/google-services.json

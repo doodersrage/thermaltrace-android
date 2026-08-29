@@ -6,45 +6,53 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
-// Matches thermaltrace.dev brand tokens
-private val Navy = Color(0xFF090B0F)
-private val Accent = Color(0xFF3B82F6)
-private val AccentHover = Color(0xFF2563EB)
-private val Text = Color(0xFFF8FAFC)
-private val Muted = Color(0xFF94A3B8)
-private val Success = Color(0xFF22C55E)
-private val Danger = Color(0xFFF87171)
-private val Surface = Color(0xFF111827)
-private val SurfaceBright = Color(0xFF1F2937)
+/** thermaltrace.dev wordmark: gray "Thermal" + orange "Trace" */
+val BrandThermal = Color(0xFFC5CBD3)
+val BrandTrace = Color(0xFFE85500)
+val BrandAccent = Color(0xFFFF9E4A)
+val BrandNavy = Color(0xFF090B0F)
+val BrandText = Color(0xFFF8FAFC)
+val BrandMuted = Color(0xFF94A3B8)
+val BrandSuccess = Color(0xFF22C55E)
+val BrandDanger = Color(0xFFF87171)
+val BrandSurface = Color(0xFF111827)
 
 private val DarkColors = darkColorScheme(
-    primary = Accent,
-    onPrimary = Text,
-    secondary = AccentHover,
-    onSecondary = Text,
-    background = Navy,
-    onBackground = Text,
-    surface = Surface,
-    onSurface = Text,
-    onSurfaceVariant = Muted,
-    error = Danger,
-    onError = Text,
-    tertiary = Success,
+    primary = BrandTrace,
+    onPrimary = BrandText,
+    secondary = BrandAccent,
+    onSecondary = BrandNavy,
+    background = BrandNavy,
+    onBackground = BrandText,
+    surface = BrandSurface,
+    onSurface = BrandText,
+    onSurfaceVariant = BrandMuted,
+    error = BrandDanger,
+    onError = BrandText,
+    tertiary = BrandSuccess,
 )
 
 private val LightColors = lightColorScheme(
-    primary = Accent,
-    onPrimary = Text,
-    secondary = AccentHover,
+    primary = BrandTrace,
+    onPrimary = BrandText,
+    secondary = Color(0xFFE85500),
     background = Color(0xFFF8FAFC),
     onBackground = Color(0xFF0F172A),
     surface = Color.White,
     onSurface = Color(0xFF0F172A),
     onSurfaceVariant = Color(0xFF64748B),
     error = Color(0xFFDC2626),
-    tertiary = Success,
+    tertiary = BrandSuccess,
 )
+
+fun brandTitle(): androidx.compose.ui.text.AnnotatedString = buildAnnotatedString {
+    withStyle(SpanStyle(color = BrandThermal)) { append("Thermal") }
+    withStyle(SpanStyle(color = BrandTrace)) { append("Trace") }
+}
 
 @Composable
 fun ThermalTraceTheme(

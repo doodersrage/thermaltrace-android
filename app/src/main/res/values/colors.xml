@@ -2,5 +2,7 @@
 <resources>
     <color name="ic_launcher_background">#090B0F</color>
     <color name="brand_navy">#090B0F</color>
-    <color name="brand_accent">#3B82F6</color>
+    <color name="brand_trace">#E85500</color>
+    <color name="brand_thermal">#C5CBD3</color>
+    <color name="brand_accent">#FF9E4A</color>
 </resources>
