@@ -9,6 +9,18 @@ data class UserExportResponse(
     val user: ExportUser? = null,
     val preferences: UserPreferencesDto? = null,
     @SerialName("alert_settings") val alertSettings: AlertSettingsDto? = null,
+    val entitlements: EntitlementsDto? = null,
+)
+
+@Serializable
+data class EntitlementsDto(
+    val tier: String = "free",
+    val canDownloadCsv: Boolean = false,
+    val canUseClaimsPack: Boolean = false,
+    val canCreateShareLinks: Boolean = false,
+    val canUsePush: Boolean = false,
+    val canUseSms: Boolean = false,
+    val historyDays: Int = 7,
 )
 
 @Serializable

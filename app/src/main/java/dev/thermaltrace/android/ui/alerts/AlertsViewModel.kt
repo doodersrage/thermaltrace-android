@@ -117,8 +117,10 @@ class AlertsViewModel(
         }
     }
 
-    fun snooze24() = runAction { settingsRepository.snooze24() }
-    fun vacation7() = runAction { settingsRepository.vacation7() }
+    fun snoozeHours(hours: Int) = runAction { settingsRepository.snoozeHours(hours) }
+    fun vacationDays(days: Int) = runAction { settingsRepository.vacationDays(days) }
+    fun snooze24() = snoozeHours(24)
+    fun vacation7() = vacationDays(7)
     fun clearSnooze() = runAction { settingsRepository.clearSnooze() }
     fun clearVacation() = runAction { settingsRepository.clearVacation() }
 

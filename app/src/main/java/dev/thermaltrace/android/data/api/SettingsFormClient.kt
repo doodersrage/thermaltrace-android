@@ -108,12 +108,20 @@ class SettingsFormClient(
             }
         }
 
-    suspend fun postSnoozeAction(action: String): Result<Unit> =
+    suspend fun postSnoozeAction(
+        action: String,
+        hours: Int? = null,
+        days: Int? = null,
+    ): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val body = FormBody.Builder()
                     .add("redirect", "/dashboard/alerts")
                     .add("action", action)
+                    .apply {
+                        if (hours != null) add("hours", hours.toString())
+                        if (days != null) add("days", days.toString())
+                    }
                     .build()
                 postForm(
                     "$root/api/user/alert-snooze",
@@ -127,6 +135,73 @@ class SettingsFormClient(
                 )
             }
         }
+
+    suspend fun createShareLink(
+        label: String,
+        scope: String,
+        expiresDays: Int,
+    ): Result<String?> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val body = FormBody.Builder()
+                    .add("redirect", "/dashboard/share")
+                    .add("action", "create")
+                    .add("label", label.trim())
+                    .add("scope", scope)
+                    .add("expires_days", expiresDays.toString())
+                    .build()
+                postFormForLocation(
+                    "$root/api/share/manage",
+                    body,
+                    successHints = listOf("created=1"),
+                ).let { location ->
+                    Regex("[?&]new_token=([^&]+)").find(location)?.groupValues?.get(1)
+                        ?.let { java.net.URLDecoder.decode(it, Charsets.UTF_8.name()) }
+                }
+            }
+        }
+
+    suspend fun revokeShareLink(id: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val body = FormBody.Builder()
+                    .add("redirect", "/dashboard/share")
+                    .add("action", "revoke")
+                    .add("id", id)
+                    .build()
+                postForm(
+                    "$root/api/share/manage",
+                    body,
+                    successHints = listOf("revoked=1"),
+                )
+            }
+        }
+
+    private fun postFormForLocation(
+        url: String,
+        body: FormBody,
+        successHints: List<String>,
+    ): String {
+        val request = Request.Builder().url(url).post(body).build()
+        client.newCall(request).execute().use { response ->
+            val location = response.header("Location").orEmpty()
+            val code = response.code
+            val okRedirect = code in 300..399 && successHints.any { location.contains(it) }
+            if (!okRedirect) {
+                if (location.contains("/signin")) {
+                    error("Session expired — sign in again")
+                }
+                if (location.contains("pro_required") || location.contains("error=pro")) {
+                    error("Pro plan required for share links")
+                }
+                if (location.contains("viewer") || location.contains("manager_required")) {
+                    error("Your household role cannot make this change")
+                }
+                error("Save failed (HTTP $code${if (location.isNotBlank()) ": $location" else ""})")
+            }
+            return location
+        }
+    }
 
     suspend fun renameDevice(deviceId: String, name: String): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -224,6 +299,9 @@ class SettingsFormClient(
                 }
                 if (location.contains("alert_error") || location.contains("prefs_error")) {
                     error("Server rejected the save")
+                }
+                if (location.contains("pro_required") || location.contains("error=pro")) {
+                    error("Pro plan required")
                 }
                 if (location.contains("viewer") || location.contains("manager_required")) {
                     error("Your household role cannot make this change")

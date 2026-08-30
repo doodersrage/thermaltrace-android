@@ -6,8 +6,10 @@ import dev.thermaltrace.android.data.model.AlertEventsResponse
 import dev.thermaltrace.android.data.model.HistoryResponse
 import dev.thermaltrace.android.data.model.HomeReadingsResponse
 import dev.thermaltrace.android.data.model.HouseholdResponse
+import dev.thermaltrace.android.data.model.ShareLinksResponse
 import dev.thermaltrace.android.data.model.TestAlertResponse
 import dev.thermaltrace.android.data.model.UserExportResponse
+import dev.thermaltrace.android.data.model.WeatherResponse
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -56,6 +58,14 @@ interface ThermalTraceApi {
         @Query("page_size") pageSize: Int = 20,
         @Query("probe") probe: String? = null,
     ): Response<HistoryResponse>
+
+    @GET("api/home/weather")
+    suspend fun weather(
+        @Query("cityId") cityId: String? = null,
+    ): Response<WeatherResponse>
+
+    @GET("api/share/manage")
+    suspend fun shareLinks(): Response<ShareLinksResponse>
 }
 
 fun createThermalTraceApi(

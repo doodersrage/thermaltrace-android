@@ -50,6 +50,7 @@ import dev.thermaltrace.android.ui.theme.brandTitle
 fun AccountScreen(
     viewModel: AccountViewModel,
     onOpenHousehold: () -> Unit = {},
+    onOpenShare: () -> Unit = {},
     onSignedOut: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -181,6 +182,12 @@ fun AccountScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Household")
+                }
+                OutlinedButton(
+                    onClick = onOpenShare,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Share links")
                 }
                 OutlinedButton(
                     onClick = {

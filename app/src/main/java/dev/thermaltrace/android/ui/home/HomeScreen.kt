@@ -1,5 +1,6 @@
 package dev.thermaltrace.android.ui.home
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
@@ -34,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.thermaltrace.android.data.insights.HeatingInsight
 import dev.thermaltrace.android.data.model.LiveSensor
 import dev.thermaltrace.android.ui.theme.brandTitle
 
@@ -91,6 +94,31 @@ fun HomeScreen(viewModel: HomeViewModel) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        state.outdoorTempF?.let { outdoor ->
+                            Text(
+                                text = "Outdoor ~${"%.0f".format(outdoor)}°F",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    if (state.insights.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Heating insights",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "Temperature and humidity vs outdoor conditions.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        items(state.insights, key = { it.label + it.detail }) { insight ->
+                            InsightCard(insight)
+                        }
                     }
 
                     val spaces = readings?.spaces.orEmpty()
@@ -152,6 +180,33 @@ fun HomeScreen(viewModel: HomeViewModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InsightCard(insight: HeatingInsight) {
+    val warning = insight.severity == HeatingInsight.Severity.Warning
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = if (warning) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant
+                },
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Text(insight.label, fontWeight = FontWeight.SemiBold)
+        Text(
+            insight.detail,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 

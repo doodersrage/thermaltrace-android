@@ -1,5 +1,6 @@
 package dev.thermaltrace.android.ui.history
 
+import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,11 +22,13 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,8 +36,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.thermaltrace.android.data.model.ChartPointDto
 import dev.thermaltrace.android.ui.theme.BrandTrace
@@ -44,6 +49,22 @@ import dev.thermaltrace.android.ui.theme.brandTitle
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(state.claimsFile) {
+        val file = state.claimsFile ?: return@LaunchedEffect
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file,
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "text/html")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching { context.startActivity(Intent.createChooser(intent, "Open claims pack")) }
+        viewModel.clearClaimsFile()
+    }
 
     Scaffold(
         topBar = {
@@ -93,6 +114,29 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
                 }
                 state.error?.let {
                     item { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+                item {
+                    Text("Claims / insurance pack", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Printable HTML for the selected window (Pro). Open and Print → Save as PDF.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = viewModel::downloadClaimsPack,
+                        enabled = !state.claimsBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (state.claimsBusy) {
+                            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(18.dp))
+                        } else {
+                            Text("Download claims pack")
+                        }
+                    }
+                    state.claimsMessage?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
                 }
                 item {
                     Text("Temperature (°F)", style = MaterialTheme.typography.titleMedium)

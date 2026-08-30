@@ -44,6 +44,8 @@ import dev.thermaltrace.android.ui.home.HomeScreen
 import dev.thermaltrace.android.ui.home.HomeViewModel
 import dev.thermaltrace.android.ui.household.HouseholdScreen
 import dev.thermaltrace.android.ui.household.HouseholdViewModel
+import dev.thermaltrace.android.ui.share.ShareScreen
+import dev.thermaltrace.android.ui.share.ShareViewModel
 import dev.thermaltrace.android.ui.login.LoginScreen
 import dev.thermaltrace.android.ui.login.LoginViewModel
 
@@ -54,6 +56,7 @@ object Routes {
     const val Devices = "devices"
     const val Alerts = "alerts"
     const val Household = "household"
+    const val Share = "share"
     const val Account = "account"
 }
 
@@ -109,7 +112,9 @@ fun ThermalTraceNav(
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
-    val showBottomBar = currentRoute in mainTabs.map { it.route } || currentRoute == Routes.Household
+    val showBottomBar = currentRoute in mainTabs.map { it.route } ||
+        currentRoute == Routes.Household ||
+        currentRoute == Routes.Share
 
     Scaffold(
         bottomBar = {
@@ -155,13 +160,21 @@ fun ThermalTraceNav(
             }
             composable(Routes.Home) {
                 val vm: HomeViewModel = viewModel(
-                    factory = HomeViewModel.factory(container.readingsRepository),
+                    factory = HomeViewModel.factory(
+                        container.readingsRepository,
+                        container.historyRepository,
+                        container.settingsRepository,
+                        container.api,
+                    ),
                 )
                 HomeScreen(viewModel = vm)
             }
             composable(Routes.History) {
                 val vm: HistoryViewModel = viewModel(
-                    factory = HistoryViewModel.factory(container.historyRepository),
+                    factory = HistoryViewModel.factory(
+                        container.historyRepository,
+                        container.claimsPackRepository,
+                    ),
                 )
                 HistoryScreen(viewModel = vm)
             }
@@ -186,6 +199,18 @@ fun ThermalTraceNav(
                 )
                 HouseholdScreen(viewModel = vm)
             }
+            composable(Routes.Share) {
+                val vm: ShareViewModel = viewModel(
+                    factory = ShareViewModel.factory(
+                        container.shareRepository,
+                        container.settingsRepository,
+                    ),
+                )
+                ShareScreen(
+                    viewModel = vm,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable(Routes.Account) {
                 val vm: AccountViewModel = viewModel(
                     factory = AccountViewModel.factory(
@@ -197,6 +222,7 @@ fun ThermalTraceNav(
                 AccountScreen(
                     viewModel = vm,
                     onOpenHousehold = { navController.navigate(Routes.Household) },
+                    onOpenShare = { navController.navigate(Routes.Share) },
                     onSignedOut = {
                         navController.navigate(Routes.Login) {
                             popUpTo(0) { inclusive = true }

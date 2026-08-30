@@ -37,23 +37,28 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk   # Linux; use a JDK 17–23 insta
 
 1. Email/password via Supabase (`signInWithPassword`).
 2. Access + refresh tokens are stored locally and attached as cookies on `thermaltrace.dev` requests (same contract as the web dashboard).
-3. Home: `GET /api/home/readings?save=0`
-4. Settings load: `GET /api/user/export` (preferences + alert settings)
-5. Settings save: form `POST` to `/api/user/preferences`, `/api/user/alert-settings`, `/api/user/alert-snooze`
+3. Home: `GET /api/home/readings?save=0` plus heating/condensation insights from history chart + weather
+4. History: `GET /api/user/history` and Pro claims pack download via `GET /api/claims/pack`
+5. Settings load: `GET /api/user/export` (preferences + alert settings + entitlements)
+6. Settings save: form `POST` to `/api/user/preferences`, `/api/user/alert-settings`, `/api/user/alert-snooze` (variable hours/days)
+7. Share links: `GET`/`POST` `/api/share/manage` (Pro)
 
 ## Project layout
 
 ```
 app/src/main/java/dev/thermaltrace/android/
-  data/auth/     Session store + Supabase sign-in
-  data/api/      Cookie jar, Retrofit, readings + settings
-  data/model/    JSON models
-  ui/login/      Sign-in
-  ui/home/       Live readings
-  ui/devices/    Device list, rename, space
-  ui/alerts/     Alert thresholds, channels, snooze
-  ui/household/  Members, rename, invite, switch
-  ui/account/    Display prefs (°C, theme), push, sign out
+  data/auth/       Session store + Supabase sign-in
+  data/api/        Cookie jar, Retrofit, readings + settings + share + claims
+  data/insights/   Heating / condensation insight helpers (parity with web)
+  data/model/      JSON models
+  ui/login/        Sign-in
+  ui/home/         Live readings + insights
+  ui/history/      Charts + claims pack
+  ui/devices/      Device list, rename, space
+  ui/alerts/       Alert thresholds, channels, snooze (4h–48h)
+  ui/household/    Members, rename, invite, switch
+  ui/share/        Guest/family share links
+  ui/account/      Display prefs (°C, theme), push, sign out
 ```
 
 ## Play Store release

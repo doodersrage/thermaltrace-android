@@ -3,6 +3,8 @@ package dev.thermaltrace.android.ui.alerts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,7 +46,7 @@ import dev.thermaltrace.android.data.model.AlertEventDto
 import dev.thermaltrace.android.data.model.AlertSettingsDto
 import dev.thermaltrace.android.ui.theme.brandTitle
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AlertsScreen(viewModel: AlertsViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -172,6 +174,7 @@ private fun InboxPane(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsPane(
     viewModel: AlertsViewModel,
@@ -246,9 +249,37 @@ private fun SettingsPane(
         }
 
         Text("Snooze", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = false, onClick = viewModel::snooze24, label = { Text("Snooze 24h") })
-            FilterChip(selected = false, onClick = viewModel::vacation7, label = { Text("Vacation 7d") })
+        val snoozeUntil = s.snoozeUntil
+        if (!snoozeUntil.isNullOrBlank()) {
+            Text(
+                "Snoozed until $snoozeUntil",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        val vacationUntil = s.vacationUntil
+        if (!vacationUntil.isNullOrBlank()) {
+            Text(
+                "Vacation until $vacationUntil",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            "Freeze and leak alerts still fire during snooze/vacation.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(4, 12, 24, 48).forEach { hours ->
+                FilterChip(
+                    selected = false,
+                    onClick = { viewModel.snoozeHours(hours) },
+                    label = { Text("${hours}h") },
+                )
+            }
+            FilterChip(selected = false, onClick = { viewModel.vacationDays(3) }, label = { Text("Vacation 3d") })
+            FilterChip(selected = false, onClick = { viewModel.vacationDays(7) }, label = { Text("Vacation 7d") })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = viewModel::clearSnooze) { Text("Clear snooze") }
