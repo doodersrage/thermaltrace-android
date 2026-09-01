@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.thermaltrace.android.data.insights.HeatingInsight
+import dev.thermaltrace.android.data.model.HouseInsightDto
 import dev.thermaltrace.android.data.model.LiveSensor
 import dev.thermaltrace.android.data.model.NwsAlert
 import dev.thermaltrace.android.data.model.NightAtRisk
@@ -108,6 +109,18 @@ fun HomeScreen(viewModel: HomeViewModel) {
                     state.ingestStatus?.takeIf { it.waiting }?.let { ingest ->
                         item {
                             IngestWaitingBanner(ingest)
+                        }
+                    }
+
+                    state.homeInsights?.house?.let { house ->
+                        item {
+                            HouseMetricCard(house)
+                        }
+                    }
+
+                    state.homeInsights?.regionalBenchmark?.let { benchmark ->
+                        item {
+                            RegionalBenchmarkCard(benchmark.message)
                         }
                     }
 
@@ -232,6 +245,64 @@ fun HomeScreen(viewModel: HomeViewModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HouseMetricCard(house: HouseInsightDto) {
+    val title = when (house.source) {
+        "thermostat" -> "House"
+        "reference_sensor" -> house.referenceLabel?.takeIf { it.isNotBlank() } ?: "Indoor reference"
+        else -> "House"
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold)
+        Text(
+            "${"%.0f".format(house.ambientTempF)}°F",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        house.detail?.takeIf { it.isNotBlank() }?.let { detail ->
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RegionalBenchmarkCard(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Text("Regional benchmark", fontWeight = FontWeight.SemiBold)
+        Text(
+            message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }
 

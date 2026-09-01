@@ -244,6 +244,7 @@ fun ThermalTraceNav(
                         container.historyRepository,
                         container.claimsPackRepository,
                         container.dashboardExtrasRepository,
+                        container.settingsRepository,
                     ),
                 )
                 HistoryScreen(viewModel = vm)

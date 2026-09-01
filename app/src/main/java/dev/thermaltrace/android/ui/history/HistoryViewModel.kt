@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dev.thermaltrace.android.data.api.ClaimsPackRepository
 import dev.thermaltrace.android.data.api.DashboardExtrasRepository
 import dev.thermaltrace.android.data.api.HistoryRepository
+import dev.thermaltrace.android.data.api.SettingsRepository
 import dev.thermaltrace.android.data.model.ChartPointDto
 import dev.thermaltrace.android.data.model.HistoryReadingDto
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,10 @@ data class HistoryUiState(
     val loading: Boolean = true,
     val days: Int = 7,
     val points: List<ChartPointDto> = emptyList(),
+    val housePoints: List<ChartPointDto> = emptyList(),
+    val houseOverlaySource: String? = null,
     val readings: List<HistoryReadingDto> = emptyList(),
+    val canUseClaimsPack: Boolean = false,
     val error: String? = null,
     val claimsBusy: Boolean = false,
     val claimsMessage: String? = null,
@@ -34,6 +38,7 @@ class HistoryViewModel(
     private val historyRepository: HistoryRepository,
     private val claimsPackRepository: ClaimsPackRepository,
     private val dashboardExtrasRepository: DashboardExtrasRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -45,20 +50,28 @@ class HistoryViewModel(
     fun refresh(days: Int = _uiState.value.days) {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, days = days, error = null, claimsMessage = null) }
+            val entitlements = settingsRepository.loadExport().getOrNull()?.entitlements
             historyRepository.load(days = days).fold(
                 onSuccess = { body ->
                     _uiState.update {
                         it.copy(
                             loading = false,
                             points = body.chart?.points.orEmpty(),
+                            housePoints = body.houseOverlay?.points.orEmpty(),
+                            houseOverlaySource = body.houseOverlay?.source,
                             readings = body.readings?.readings.orEmpty(),
+                            canUseClaimsPack = entitlements?.canUseClaimsPack == true,
                             error = body.chart?.error ?: body.readings?.error,
                         )
                     }
                 },
                 onFailure = { err ->
                     _uiState.update {
-                        it.copy(loading = false, error = err.message ?: "Failed to load history")
+                        it.copy(
+                            loading = false,
+                            canUseClaimsPack = entitlements?.canUseClaimsPack == true,
+                            error = err.message ?: "Failed to load history",
+                        )
                     }
                 },
             )
@@ -66,6 +79,12 @@ class HistoryViewModel(
     }
 
     fun downloadClaimsPack() {
+        if (!_uiState.value.canUseClaimsPack) {
+            _uiState.update {
+                it.copy(claimsMessage = "Claims pack requires ThermalTrace Pro — upgrade on thermaltrace.dev")
+            }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(claimsBusy = true, claimsMessage = null, error = null) }
             claimsPackRepository.download(_uiState.value.days).fold(
@@ -96,6 +115,12 @@ class HistoryViewModel(
     }
 
     fun openEmailDialog() {
+        if (!_uiState.value.canUseClaimsPack) {
+            _uiState.update {
+                it.copy(claimsMessage = "Claims pack requires ThermalTrace Pro — upgrade on thermaltrace.dev")
+            }
+            return
+        }
         _uiState.update { it.copy(emailDialogOpen = true, emailMessage = null, error = null) }
     }
 
@@ -145,11 +170,17 @@ class HistoryViewModel(
             historyRepository: HistoryRepository,
             claimsPackRepository: ClaimsPackRepository,
             dashboardExtrasRepository: DashboardExtrasRepository,
+            settingsRepository: SettingsRepository,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    HistoryViewModel(historyRepository, claimsPackRepository, dashboardExtrasRepository) as T
+                    HistoryViewModel(
+                        historyRepository,
+                        claimsPackRepository,
+                        dashboardExtrasRepository,
+                        settingsRepository,
+                    ) as T
             }
     }
 }

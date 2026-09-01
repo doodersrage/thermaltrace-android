@@ -50,7 +50,11 @@ class HistoryRepository(
 ) {
     suspend fun load(days: Int = 7, probe: String? = null): Result<HistoryResponse> =
         runCatching {
-            val response = api.history(days = days, probe = probe)
+            val response = api.history(
+                days = days,
+                probe = probe,
+                include = "chart,readings,house_overlay",
+            )
             if (response.code() == 401) error("Unauthorized — sign in again")
             if (!response.isSuccessful) {
                 error("HTTP ${response.code()}: ${response.errorBody()?.string().orEmpty()}")

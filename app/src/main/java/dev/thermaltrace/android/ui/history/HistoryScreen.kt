@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -167,7 +168,11 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
                 item {
                     Text("Claims / insurance pack", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Printable HTML for the selected window (Pro). Open and Print → Save as PDF.",
+                        if (state.canUseClaimsPack) {
+                            "Printable HTML for the selected window (Pro). Open and Print → Save as PDF."
+                        } else {
+                            "Claims pack is a Pro feature. Upgrade on thermaltrace.dev to download or email a printable pack."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -203,13 +208,28 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
                     if (state.points.isEmpty()) {
                         Text("No chart points in this window.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        Sparkline(state.points)
+                        Sparkline(
+                            garagePoints = state.points,
+                            housePoints = state.housePoints.takeIf { it.size >= 2 }.orEmpty(),
+                        )
                         val temps = state.points.map { it.tempf }
                         Text(
                             "Min ${temps.minOrNull()?.let { "%.1f".format(it) }}°F · Max ${temps.maxOrNull()?.let { "%.1f".format(it) }}°F",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        if (state.housePoints.size >= 2) {
+                            val label = when (state.houseOverlaySource) {
+                                "thermostat" -> "House thermostat"
+                                "reference" -> "Indoor reference"
+                                else -> "House"
+                            }
+                            Text(
+                                "$label overlay shown as dashed line.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
                 item { Text("Recent readings", style = MaterialTheme.typography.titleMedium) }
@@ -239,33 +259,59 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
 }
 
 @Composable
-private fun Sparkline(points: List<ChartPointDto>) {
-    val color = BrandTrace
+private fun Sparkline(
+    garagePoints: List<ChartPointDto>,
+    housePoints: List<ChartPointDto> = emptyList(),
+) {
+    val garageColor = BrandTrace
+    val houseColor = MaterialTheme.colorScheme.secondary
     Canvas(
         Modifier
             .fillMaxWidth()
             .height(140.dp)
             .padding(vertical = 8.dp),
     ) {
-        if (points.size < 2) return@Canvas
-        val temps = points.map { it.tempf }
-        val min = temps.minOrNull() ?: return@Canvas
-        val max = temps.maxOrNull() ?: return@Canvas
+        if (garagePoints.size < 2) return@Canvas
+        val allTemps = garagePoints.map { it.tempf } + housePoints.map { it.tempf }
+        val min = allTemps.minOrNull() ?: return@Canvas
+        val max = allTemps.maxOrNull() ?: return@Canvas
         val range = (max - min).takeIf { it > 0.01 } ?: 1.0
-        val path = Path()
-        points.forEachIndexed { index, point ->
-            val x = size.width * index / (points.size - 1).toFloat()
-            val y = size.height * (1f - ((point.tempf - min) / range).toFloat())
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+
+        fun yFor(temp: Double): Float =
+            size.height * (1f - ((temp - min) / range).toFloat())
+
+        val garagePath = Path()
+        garagePoints.forEachIndexed { index, point ->
+            val x = size.width * index / (garagePoints.size - 1).toFloat()
+            val y = yFor(point.tempf)
+            if (index == 0) garagePath.moveTo(x, y) else garagePath.lineTo(x, y)
         }
         drawPath(
-            path = path,
-            color = color,
+            path = garagePath,
+            color = garageColor,
             style = Stroke(width = 4f, cap = StrokeCap.Round),
         )
-        val last = points.last()
-        val lastX = size.width
-        val lastY = size.height * (1f - ((last.tempf - min) / range).toFloat())
-        drawCircle(color = color, radius = 6f, center = Offset(lastX, lastY))
+
+        if (housePoints.size >= 2) {
+            val housePath = Path()
+            housePoints.forEachIndexed { index, point ->
+                val x = size.width * index / (housePoints.size - 1).toFloat()
+                val y = yFor(point.tempf)
+                if (index == 0) housePath.moveTo(x, y) else housePath.lineTo(x, y)
+            }
+            drawPath(
+                path = housePath,
+                color = houseColor,
+                style = Stroke(
+                    width = 3f,
+                    cap = StrokeCap.Round,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f)),
+                ),
+            )
+        }
+
+        val last = garagePoints.last()
+        val lastY = yFor(last.tempf)
+        drawCircle(color = garageColor, radius = 6f, center = Offset(size.width, lastY))
     }
 }

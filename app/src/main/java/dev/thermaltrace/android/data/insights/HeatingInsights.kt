@@ -1,6 +1,7 @@
 package dev.thermaltrace.android.data.insights
 
 import dev.thermaltrace.android.data.model.ChartPointDto
+import dev.thermaltrace.android.data.model.HouseInsightDto
 import kotlin.math.abs
 import kotlin.math.ln
 
@@ -11,6 +12,15 @@ data class HeatingInsight(
 ) {
     enum class Severity { Info, Warning }
 }
+
+private val heatingModes = setOf("HEAT", "HEATCOOL", "heat", "auxHeatOnly")
+private val coolingModes = setOf("COOL", "cool")
+
+private fun isThermostatHeating(mode: String?): Boolean =
+    mode != null && heatingModes.contains(mode)
+
+private fun isThermostatCooling(mode: String?): Boolean =
+    mode != null && coolingModes.contains(mode)
 
 /** Dew point °F from air temperature and relative humidity (Magnus-Tetens). */
 fun dewPointF(tempF: Double, rhPct: Double): Double? {
@@ -46,6 +56,7 @@ fun buildHeatingInsights(
     outdoorTempF: Double?,
     freezeThresholdF: Double,
     doorOpenMinutes: Double? = null,
+    house: HouseInsightDto? = null,
 ): List<HeatingInsight> {
     val insights = mutableListOf<HeatingInsight>()
     val latest = indoorPoints.lastOrNull { it.tempf.isFinite() } ?: return insights
@@ -101,6 +112,50 @@ fun buildHeatingInsights(
                 label = "Condensation risk",
                 detail = "Dew point ~${"%.0f".format(dewPoint)}°F — air is within ${"%.0f".format(margin.coerceAtLeast(0.0))}°F of saturating. Cold slabs and tools can sweat even if the probe is warmer.",
                 severity = if (margin <= 2) HeatingInsight.Severity.Warning else HeatingInsight.Severity.Info,
+            )
+        }
+    }
+
+    val houseTempF = house?.ambientTempF?.takeIf { it.isFinite() }
+    val hasThermostat = house?.source == "thermostat"
+    val hvacMode = house?.hvacMode
+
+    if (houseTempF != null) {
+        val delta = houseTempF - latest.tempf
+        if (delta >= 12) {
+            val houseLabel = if (hasThermostat) "House thermostat" else "Indoor reference"
+            insights += HeatingInsight(
+                label = "Garage–house gap",
+                detail = "$houseLabel ${"%.0f".format(houseTempF)}°F vs probe ${"%.1f".format(latest.tempf)}°F (${"%.0f".format(delta)}°F warmer inside). Freeze alerts still apply to the unconditioned probe.",
+                severity = if (latest.tempf <= freezeThresholdF + 5) {
+                    HeatingInsight.Severity.Warning
+                } else {
+                    HeatingInsight.Severity.Info
+                },
+            )
+        }
+
+        if (latest.tempf <= freezeThresholdF && houseTempF > freezeThresholdF + 10) {
+            insights += HeatingInsight(
+                label = "Warm house, cold probe",
+                detail = "Probe is at or below ${"%.0f".format(freezeThresholdF)}°F while the house reads ${"%.0f".format(houseTempF)}°F — expected for an unheated garage or shop.",
+                severity = HeatingInsight.Severity.Info,
+            )
+        }
+
+        if (hasThermostat && isThermostatHeating(hvacMode) && latest.tempf < houseTempF - 15) {
+            insights += HeatingInsight(
+                label = "HVAC heating",
+                detail = "Furnace is on (house ${"%.0f".format(houseTempF)}°F) but the monitored space is unconditioned — it will stay colder than living areas.",
+                severity = HeatingInsight.Severity.Info,
+            )
+        }
+
+        if (hasThermostat && isThermostatCooling(hvacMode) && latest.tempf > houseTempF + 10) {
+            insights += HeatingInsight(
+                label = "HVAC cooling",
+                detail = "AC is running (house ${"%.0f".format(houseTempF)}°F). A hot garage or attic probe can still spike on sunny days.",
+                severity = HeatingInsight.Severity.Info,
             )
         }
     }

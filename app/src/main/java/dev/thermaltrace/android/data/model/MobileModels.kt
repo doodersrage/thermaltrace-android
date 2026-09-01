@@ -27,7 +27,29 @@ data class HomeInsightsResponse(
     @SerialName("freeze_threshold_f") val freezeThresholdF: Double = 34.0,
     @SerialName("nights_at_risk") val nightsAtRisk: List<NightAtRisk> = emptyList(),
     @SerialName("nws_alerts") val nwsAlerts: List<NwsAlert> = emptyList(),
+    @SerialName("outdoor_temp_f") val outdoorTempF: Double? = null,
+    val house: HouseInsightDto? = null,
+    @SerialName("regional_benchmark") val regionalBenchmark: RegionalBenchmarkDto? = null,
     val weather: InsightWeather? = null,
+)
+
+@Serializable
+data class HouseInsightDto(
+    val source: String = "",
+    @SerialName("ambient_temp_f") val ambientTempF: Double = 0.0,
+    @SerialName("heat_setpoint_f") val heatSetpointF: Double? = null,
+    @SerialName("hvac_mode") val hvacMode: String? = null,
+    val detail: String? = null,
+    @SerialName("reference_label") val referenceLabel: String? = null,
+)
+
+@Serializable
+data class RegionalBenchmarkDto(
+    @SerialName("city_label") val cityLabel: String,
+    @SerialName("your_temp_f") val yourTempF: Double,
+    @SerialName("city_avg_temp_f") val cityAvgTempF: Double? = null,
+    @SerialName("delta_f") val deltaF: Double? = null,
+    val message: String,
 )
 
 @Serializable

@@ -27,9 +27,16 @@ data class AlertEventDto(
 data class HistoryResponse(
     val days: Int = 7,
     val chart: HistoryChartDto? = null,
+    @SerialName("house_overlay") val houseOverlay: HistoryHouseOverlayDto? = null,
     val readings: HistoryReadingsDto? = null,
     val filters: HistoryFiltersDto? = null,
     val error: String? = null,
+)
+
+@Serializable
+data class HistoryHouseOverlayDto(
+    val source: String? = null,
+    val points: List<ChartPointDto> = emptyList(),
 )
 
 @Serializable

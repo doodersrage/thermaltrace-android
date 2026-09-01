@@ -77,6 +77,7 @@ class HomeViewModel(
                 val weatherResponse = api.weather(cityId)
                 if (weatherResponse.isSuccessful) weatherResponse.body()?.weather?.temp else null
             }.getOrNull()
+                ?: homeInsights?.outdoorTempF
                 ?: homeInsights?.weather?.tempF
 
             val points = history?.chart?.points.orEmpty()
@@ -84,6 +85,7 @@ class HomeViewModel(
                 indoorPoints = points,
                 outdoorTempF = outdoor,
                 freezeThresholdF = freezeThreshold,
+                house = homeInsights?.house,
             )
 
             readingsResult.fold(
