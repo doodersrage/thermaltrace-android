@@ -1,5 +1,6 @@
 package dev.thermaltrace.android.data.auth
 
+import androidx.activity.ComponentActivity
 import dev.thermaltrace.android.BuildConfig
 import dev.thermaltrace.android.data.api.SessionCookieJar
 import dev.thermaltrace.android.data.api.ThermalTraceApi
@@ -14,6 +15,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.createSupabaseClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -156,6 +158,44 @@ class AuthRepository(
         val payload = response.body()
         if (!response.isSuccessful || payload?.ok != true) {
             error(payload?.error ?: "Invalid code")
+        }
+        val access = payload.accessToken ?: error("Missing access token")
+        val refresh = payload.refreshToken ?: error("Missing refresh token")
+        persistSession(access, refresh)
+    }
+
+    suspend fun verifyMfaWithSecurityKey(activity: ComponentActivity): Result<Unit> = runCatching {
+        val challengeBody = buildJsonObject {
+            put("action", "webauthn_challenge")
+        }.toString().toRequestBody("application/json".toMediaType())
+
+        val challengeResponse = api.verifyMfa(challengeBody)
+        val challenge = challengeResponse.body()
+        if (!challengeResponse.isSuccessful || challenge?.ok != true) {
+            error(challenge?.error ?: "No security key enrolled")
+        }
+
+        val publicKey = challenge.publicKey ?: error("Missing WebAuthn challenge")
+        val factorId = challenge.factorId ?: error("Missing factor id")
+        val challengeId = challenge.challengeId ?: error("Missing challenge id")
+        val ceremonyType = challenge.ceremonyType ?: "request"
+
+        val helper = WebAuthnMfaHelper(activity)
+        val requestJson = WebAuthnMfaHelper.publicKeyRequestJson(publicKey)
+        val credentialResponse = helper.getAssertion(requestJson)
+
+        val verifyBody = buildJsonObject {
+            put("action", "webauthn_verify")
+            put("factorId", factorId)
+            put("challengeId", challengeId)
+            put("ceremonyType", ceremonyType)
+            put("credentialResponse", credentialResponse)
+        }.toString().toRequestBody("application/json".toMediaType())
+
+        val verifyResponse = api.verifyMfa(verifyBody)
+        val payload = verifyResponse.body()
+        if (!verifyResponse.isSuccessful || payload?.ok != true) {
+            error(payload?.error ?: "Security key verification failed")
         }
         val access = payload.accessToken ?: error("Missing access token")
         val refresh = payload.refreshToken ?: error("Missing refresh token")

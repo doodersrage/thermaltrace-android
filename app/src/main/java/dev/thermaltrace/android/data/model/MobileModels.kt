@@ -2,6 +2,7 @@ package dev.thermaltrace.android.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class PortfolioResponse(
@@ -146,6 +147,10 @@ data class MfaVerifyResponse(
     @SerialName("refresh_token") val refreshToken: String? = null,
     val aal: String? = null,
     val error: String? = null,
+    @SerialName("factorId") val factorId: String? = null,
+    @SerialName("challengeId") val challengeId: String? = null,
+    @SerialName("ceremonyType") val ceremonyType: String? = null,
+    @SerialName("publicKey") val publicKey: JsonObject? = null,
 )
 
 @Serializable

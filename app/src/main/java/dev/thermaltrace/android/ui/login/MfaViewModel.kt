@@ -1,5 +1,6 @@
 package dev.thermaltrace.android.ui.login
 
+import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 data class MfaUiState(
     val code: String = "",
     val loading: Boolean = false,
+    val webauthnLoading: Boolean = false,
     val error: String? = null,
 )
 
@@ -42,6 +44,22 @@ class MfaViewModel(
                 onFailure = { err ->
                     _uiState.update {
                         it.copy(error = err.message ?: "Invalid code")
+                    }
+                },
+            )
+        }
+    }
+
+    fun verifyWithSecurityKey(activity: ComponentActivity, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(webauthnLoading = true, error = null) }
+            val result = authRepository.verifyMfaWithSecurityKey(activity)
+            _uiState.update { it.copy(webauthnLoading = false) }
+            result.fold(
+                onSuccess = { onSuccess() },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(error = err.message ?: "Security key verification failed")
                     }
                 },
             )
