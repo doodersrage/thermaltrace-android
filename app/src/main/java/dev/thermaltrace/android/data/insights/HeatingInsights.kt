@@ -125,7 +125,7 @@ fun buildHeatingInsights(
         if (delta >= 12) {
             val houseLabel = if (hasThermostat) "House thermostat" else "Indoor reference"
             insights += HeatingInsight(
-                label = "Garage–house gap",
+                label = "House–probe gap",
                 detail = "$houseLabel ${"%.0f".format(houseTempF)}°F vs probe ${"%.1f".format(latest.tempf)}°F (${"%.0f".format(delta)}°F warmer inside). Freeze alerts still apply to the unconditioned probe.",
                 severity = if (latest.tempf <= freezeThresholdF + 5) {
                     HeatingInsight.Severity.Warning
@@ -138,7 +138,7 @@ fun buildHeatingInsights(
         if (latest.tempf <= freezeThresholdF && houseTempF > freezeThresholdF + 10) {
             insights += HeatingInsight(
                 label = "Warm house, cold probe",
-                detail = "Probe is at or below ${"%.0f".format(freezeThresholdF)}°F while the house reads ${"%.0f".format(houseTempF)}°F — expected for an unheated garage or shop.",
+                detail = "Probe is at or below ${"%.0f".format(freezeThresholdF)}°F while the house reads ${"%.0f".format(houseTempF)}°F — expected for an unheated shop, garage, or attic.",
                 severity = HeatingInsight.Severity.Info,
             )
         }
@@ -154,7 +154,7 @@ fun buildHeatingInsights(
         if (hasThermostat && isThermostatCooling(hvacMode) && latest.tempf > houseTempF + 10) {
             insights += HeatingInsight(
                 label = "HVAC cooling",
-                detail = "AC is running (house ${"%.0f".format(houseTempF)}°F). A hot garage or attic probe can still spike on sunny days.",
+                detail = "AC is running (house ${"%.0f".format(houseTempF)}°F). A hot attic, shop, or garage probe can still spike on sunny days.",
                 severity = HeatingInsight.Severity.Info,
             )
         }

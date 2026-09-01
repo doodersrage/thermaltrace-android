@@ -15,7 +15,7 @@ ThermalTrace
 
 ## Short description (80 chars max)
 
-Monitor garage temperatures and freeze alerts from your ThermalTrace account.
+Monitor probe temperatures and freeze alerts from your ThermalTrace account.
 
 ## Full description
 
@@ -41,7 +41,7 @@ Tools (or Productivity / House & Home if preferred)
 
 ## Tags / keywords (internal notes only)
 
-temperature, garage, freeze, humidity, IoT, ESP32, alerts, monitoring
+temperature, garage, workshop, attic, freeze, humidity, IoT, ESP32, alerts, monitoring
 
 ## Contact
 
