@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -18,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,7 +54,7 @@ fun MfaScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Enter the 6-digit code from your authenticator app.",
+            text = "Enter a 6-digit authenticator code or tap your YubiKey OTP.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -68,6 +70,26 @@ fun MfaScreen(
             enabled = !state.loading,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.NumberPassword,
+                imeAction = ImeAction.Next,
+            ),
+        )
+
+        Spacer(Modifier.height(16.dp))
+        HorizontalDivider(modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = state.yubikeyOtp,
+            onValueChange = viewModel::onYubikeyOtpChange,
+            label = { Text("YubiKey OTP") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !state.loading,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = FontFamily.Monospace,
+            ),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Ascii,
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(
@@ -100,13 +122,5 @@ fun MfaScreen(
                 Text("Verify")
             }
         }
-
-        Spacer(Modifier.height(24.dp))
-        Text(
-            text = "Using a YubiKey with Yubico Authenticator? Tap your key to generate a 6-digit code, then enter it above.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
     }
 }

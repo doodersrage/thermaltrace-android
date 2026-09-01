@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 
 data class MfaUiState(
     val code: String = "",
+    val yubikeyOtp: String = "",
     val loading: Boolean = false,
     val error: String? = null,
 )
@@ -27,21 +28,37 @@ class MfaViewModel(
         _uiState.update { it.copy(code = digits, error = null) }
     }
 
+    fun onYubikeyOtpChange(value: String) {
+        _uiState.update { it.copy(yubikeyOtp = value.trim(), error = null) }
+    }
+
     fun verify(onSuccess: () -> Unit) {
-        val code = _uiState.value.code
-        if (code.length != 6) {
-            _uiState.update { it.copy(error = "Enter the 6-digit code") }
+        val state = _uiState.value
+        val yubikeyOtp = state.yubikeyOtp
+        val code = state.code
+
+        if (yubikeyOtp.isNotEmpty()) {
+            if (yubikeyOtp.length < 44) {
+                _uiState.update { it.copy(error = "Tap your YubiKey to fill the OTP field") }
+                return
+            }
+        } else if (code.length != 6) {
+            _uiState.update { it.copy(error = "Enter the 6-digit code or a YubiKey OTP") }
             return
         }
+
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
-            val result = authRepository.verifyMfa(code)
+            val result = authRepository.verifyMfa(
+                code = code,
+                yubikeyOtp = yubikeyOtp.takeIf { it.isNotEmpty() },
+            )
             _uiState.update { it.copy(loading = false) }
             result.fold(
                 onSuccess = { onSuccess() },
                 onFailure = { err ->
                     _uiState.update {
-                        it.copy(error = err.message ?: "Invalid code")
+                        it.copy(error = err.message ?: "Verification failed")
                     }
                 },
             )

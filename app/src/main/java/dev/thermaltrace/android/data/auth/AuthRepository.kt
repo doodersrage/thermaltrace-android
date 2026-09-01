@@ -148,8 +148,14 @@ class AuthRepository(
         )
     }
 
-    suspend fun verifyMfa(code: String): Result<Unit> = runCatching {
-        val body = buildJsonObject { put("code", code) }
+    suspend fun verifyMfa(code: String, yubikeyOtp: String? = null): Result<Unit> = runCatching {
+        val body = buildJsonObject {
+            if (!yubikeyOtp.isNullOrBlank()) {
+                put("yubikey_otp", yubikeyOtp.trim())
+            } else {
+                put("code", code)
+            }
+        }
             .toString()
             .toRequestBody("application/json".toMediaType())
         val response = api.verifyMfa(body)
@@ -179,9 +185,23 @@ class AuthRepository(
         val level: MfaLevel? = runCatching {
             supabase.auth.mfa.getAuthenticatorAssuranceLevel()
         }.getOrNull()
-        if (level == null) return false
-        return level.next == AuthenticatorAssuranceLevel.AAL2 &&
-            level.current != AuthenticatorAssuranceLevel.AAL2
+        if (level == null) return hasYubiKeyOtpEnrolled(supabase)
+
+        val supabaseStepUp =
+            level.next == AuthenticatorAssuranceLevel.AAL2 &&
+                level.current != AuthenticatorAssuranceLevel.AAL2
+        if (supabaseStepUp) return true
+
+        return level.current != AuthenticatorAssuranceLevel.AAL2 &&
+            hasYubiKeyOtpEnrolled(supabase)
+    }
+
+    private fun hasYubiKeyOtpEnrolled(supabase: SupabaseClient): Boolean {
+        val raw = supabase.auth.currentUserOrNull()
+            ?.userMetadata
+            ?.get("yubikey_otp_public_ids")
+            ?: return false
+        return raw is List<*> && raw.isNotEmpty()
     }
 }
 
