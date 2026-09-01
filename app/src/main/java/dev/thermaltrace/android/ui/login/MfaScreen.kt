@@ -1,6 +1,5 @@
 package dev.thermaltrace.android.ui.login
 
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,16 +11,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -36,8 +32,6 @@ fun MfaScreen(
     onVerified: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val activity = LocalContext.current as? ComponentActivity
-    val busy = state.loading || state.webauthnLoading
 
     Column(
         modifier = Modifier
@@ -58,7 +52,7 @@ fun MfaScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Enter a code from your authenticator app or use a security key.",
+            text = "Enter the 6-digit code from your authenticator app.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -71,7 +65,7 @@ fun MfaScreen(
             label = { Text("6-digit code") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            enabled = !busy,
+            enabled = !state.loading,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.NumberPassword,
                 imeAction = ImeAction.Done,
@@ -93,7 +87,7 @@ fun MfaScreen(
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = { viewModel.verify(onVerified) },
-            enabled = !busy,
+            enabled = !state.loading,
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (state.loading) {
@@ -103,35 +97,16 @@ fun MfaScreen(
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
-                Text("Verify code")
+                Text("Verify")
             }
         }
 
-        if (activity != null) {
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider(modifier = Modifier.fillMaxWidth())
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = "Or tap your YubiKey or other security key.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = { viewModel.verifyWithSecurityKey(activity, onVerified) },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (state.webauthnLoading) {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.height(20.dp),
-                    )
-                } else {
-                    Text("Use security key")
-                }
-            }
-        }
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = "Using a YubiKey with Yubico Authenticator? Tap your key to generate a 6-digit code, then enter it above.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
