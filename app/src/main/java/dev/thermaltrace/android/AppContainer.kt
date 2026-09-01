@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import dev.thermaltrace.android.data.api.AlertsInboxRepository
 import dev.thermaltrace.android.data.api.ClaimsPackRepository
+import dev.thermaltrace.android.data.api.DashboardExtrasRepository
 import dev.thermaltrace.android.data.api.DevicesRepository
 import dev.thermaltrace.android.data.api.HistoryRepository
 import dev.thermaltrace.android.data.api.HouseholdRepository
@@ -97,6 +98,7 @@ class AppContainer(context: Context) {
     val historyRepository = HistoryRepository(api)
     val claimsPackRepository = ClaimsPackRepository(appContext, okHttpClient)
     val shareRepository = ShareRepository(api, formClient)
+    val dashboardExtrasRepository = DashboardExtrasRepository(api, json)
 
     val pushRegistrar = PushRegistrar(
         context = appContext,
@@ -109,5 +111,6 @@ class AppContainer(context: Context) {
         sessionStore = sessionStore,
         cookieJar = cookieJar,
         pushRegistrar = pushRegistrar,
+        api = api,
     )
 }

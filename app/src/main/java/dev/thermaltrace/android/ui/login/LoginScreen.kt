@@ -2,18 +2,24 @@ package dev.thermaltrace.android.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -30,13 +36,16 @@ import dev.thermaltrace.android.ui.theme.brandTitle
 fun LoginScreen(
     viewModel: LoginViewModel,
     onSignedIn: () -> Unit,
+    onNeedsMfa: () -> Unit,
+    onOpenOAuthUrl: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -47,7 +56,11 @@ fun LoginScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Sign in to thermaltrace.dev",
+            text = when (state.mode) {
+                LoginMode.SignIn -> "Sign in to thermaltrace.dev"
+                LoginMode.Register -> "Create your account"
+                LoginMode.ForgotPassword -> "Reset your password"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -70,25 +83,35 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
-                imeAction = ImeAction.Next,
-            ),
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = state.password,
-            onValueChange = viewModel::onPasswordChange,
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
+                imeAction = if (state.mode == LoginMode.ForgotPassword) ImeAction.Done else ImeAction.Next,
             ),
             keyboardActions = KeyboardActions(
-                onDone = { viewModel.signIn(onSignedIn) },
+                onDone = {
+                    if (state.mode == LoginMode.ForgotPassword) {
+                        viewModel.submit(onSignedIn, onNeedsMfa)
+                    }
+                },
             ),
         )
+
+        if (state.mode != LoginMode.ForgotPassword) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = state.password,
+                onValueChange = viewModel::onPasswordChange,
+                label = { Text("Password") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { viewModel.submit(onSignedIn, onNeedsMfa) },
+                ),
+            )
+        }
 
         state.error?.let { message ->
             Spacer(Modifier.height(12.dp))
@@ -98,10 +121,18 @@ fun LoginScreen(
                 style = MaterialTheme.typography.bodySmall,
             )
         }
+        state.message?.let { message ->
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.tertiary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
         Button(
-            onClick = { viewModel.signIn(onSignedIn) },
+            onClick = { viewModel.submit(onSignedIn, onNeedsMfa) },
             enabled = !state.loading,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -112,7 +143,54 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
-                Text("Sign in")
+                Text(
+                    when (state.mode) {
+                        LoginMode.SignIn -> "Sign in"
+                        LoginMode.Register -> "Create account"
+                        LoginMode.ForgotPassword -> "Send reset email"
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (state.mode) {
+                LoginMode.SignIn -> {
+                    TextButton(onClick = { viewModel.setMode(LoginMode.Register) }) {
+                        Text("Register")
+                    }
+                    TextButton(onClick = { viewModel.setMode(LoginMode.ForgotPassword) }) {
+                        Text("Forgot password?")
+                    }
+                }
+                else -> {
+                    TextButton(onClick = { viewModel.setMode(LoginMode.SignIn) }) {
+                        Text("Back to sign in")
+                    }
+                }
+            }
+        }
+
+        if (state.mode == LoginMode.SignIn) {
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Or continue with",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            listOf("google" to "Google", "github" to "GitHub", "discord" to "Discord").forEach { (id, label) ->
+                OutlinedButton(
+                    onClick = { onOpenOAuthUrl(viewModel.oauthUrl(id)) },
+                    enabled = !state.loading,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(label)
+                }
+                Spacer(Modifier.height(8.dp))
             }
         }
     }

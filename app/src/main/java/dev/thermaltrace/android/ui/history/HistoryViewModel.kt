@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.thermaltrace.android.data.api.ClaimsPackRepository
+import dev.thermaltrace.android.data.api.DashboardExtrasRepository
 import dev.thermaltrace.android.data.api.HistoryRepository
 import dev.thermaltrace.android.data.model.ChartPointDto
 import dev.thermaltrace.android.data.model.HistoryReadingDto
@@ -23,11 +24,16 @@ data class HistoryUiState(
     val claimsBusy: Boolean = false,
     val claimsMessage: String? = null,
     val claimsFile: File? = null,
+    val emailDialogOpen: Boolean = false,
+    val adjusterEmail: String = "",
+    val emailBusy: Boolean = false,
+    val emailMessage: String? = null,
 )
 
 class HistoryViewModel(
     private val historyRepository: HistoryRepository,
     private val claimsPackRepository: ClaimsPackRepository,
+    private val dashboardExtrasRepository: DashboardExtrasRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
@@ -89,15 +95,61 @@ class HistoryViewModel(
         _uiState.update { it.copy(claimsFile = null) }
     }
 
+    fun openEmailDialog() {
+        _uiState.update { it.copy(emailDialogOpen = true, emailMessage = null, error = null) }
+    }
+
+    fun dismissEmailDialog() {
+        _uiState.update { it.copy(emailDialogOpen = false, adjusterEmail = "", emailMessage = null) }
+    }
+
+    fun onAdjusterEmailChange(value: String) {
+        _uiState.update { it.copy(adjusterEmail = value, emailMessage = null) }
+    }
+
+    fun emailClaimsPack() {
+        val email = _uiState.value.adjusterEmail.trim()
+        if (email.isBlank() || !email.contains("@")) {
+            _uiState.update { it.copy(emailMessage = "Enter a valid adjuster email") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(emailBusy = true, emailMessage = null, error = null) }
+            dashboardExtrasRepository.emailClaimsPack(adjusterEmail = email).fold(
+                onSuccess = { response ->
+                    _uiState.update {
+                        it.copy(
+                            emailBusy = false,
+                            emailDialogOpen = false,
+                            adjusterEmail = "",
+                            emailMessage = response.verificationCode?.let { code ->
+                                "Email sent. Verification code: $code"
+                            } ?: "Claims pack email sent",
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            emailBusy = false,
+                            emailMessage = err.message ?: "Email failed",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
     companion object {
         fun factory(
             historyRepository: HistoryRepository,
             claimsPackRepository: ClaimsPackRepository,
+            dashboardExtrasRepository: DashboardExtrasRepository,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    HistoryViewModel(historyRepository, claimsPackRepository) as T
+                    HistoryViewModel(historyRepository, claimsPackRepository, dashboardExtrasRepository) as T
             }
     }
 }

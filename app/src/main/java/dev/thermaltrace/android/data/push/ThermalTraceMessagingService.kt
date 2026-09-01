@@ -36,19 +36,21 @@ class ThermalTraceMessagingService : FirebaseMessagingService() {
         val destination = message.data["deep_link"]
             ?.takeIf { it.isNotBlank() }
             ?: DeepLinks.ALERTS
+        val eventId = message.data["event_id"]?.toLongOrNull()
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(DeepLinks.EXTRA_DESTINATION, destination)
+            eventId?.let { putExtra(DeepLinks.EXTRA_EVENT_ID, it.toString()) }
         }
         val pending = PendingIntent.getActivity(
             this,
-            destination.hashCode(),
+            (destination + (eventId?.toString() ?: "")).hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val notification = NotificationCompat.Builder(this, PushRegistrar.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, PushRegistrar.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_thermaltrace)
             .setContentTitle(title)
             .setContentText(body)
@@ -56,10 +58,22 @@ class ThermalTraceMessagingService : FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pending)
-            .build()
+
+        eventId?.let { id ->
+            val ackIntent = Intent(this, AcknowledgeAlertReceiver::class.java).apply {
+                putExtra(DeepLinks.EXTRA_EVENT_ID, id)
+            }
+            val ackPending = PendingIntent.getBroadcast(
+                this,
+                id.hashCode(),
+                ackIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            builder.addAction(0, "Acknowledge", ackPending)
+        }
 
         try {
-            NotificationManagerCompat.from(this).notify((title + body).hashCode(), notification)
+            NotificationManagerCompat.from(this).notify((title + body).hashCode(), builder.build())
         } catch (error: SecurityException) {
             Log.w(TAG, "Notification permission missing", error)
         }

@@ -3,13 +3,17 @@ package dev.thermaltrace.android.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.thermaltrace.android.data.api.DashboardExtrasRepository
 import dev.thermaltrace.android.data.api.HistoryRepository
 import dev.thermaltrace.android.data.api.ReadingsRepository
 import dev.thermaltrace.android.data.api.SettingsRepository
 import dev.thermaltrace.android.data.api.ThermalTraceApi
 import dev.thermaltrace.android.data.insights.HeatingInsight
 import dev.thermaltrace.android.data.insights.buildHeatingInsights
+import dev.thermaltrace.android.data.model.DoorSession
+import dev.thermaltrace.android.data.model.HomeInsightsResponse
 import dev.thermaltrace.android.data.model.HomeReadingsResponse
+import dev.thermaltrace.android.data.model.IngestStatusResponse
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +30,9 @@ data class HomeUiState(
     val selectedSpace: String? = null,
     val insights: List<HeatingInsight> = emptyList(),
     val outdoorTempF: Double? = null,
+    val homeInsights: HomeInsightsResponse? = null,
+    val doorSessions: List<DoorSession> = emptyList(),
+    val ingestStatus: IngestStatusResponse? = null,
     val error: String? = null,
 )
 
@@ -33,6 +40,7 @@ class HomeViewModel(
     private val readingsRepository: ReadingsRepository,
     private val historyRepository: HistoryRepository,
     private val settingsRepository: SettingsRepository,
+    private val dashboardExtrasRepository: DashboardExtrasRepository,
     private val api: ThermalTraceApi,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -61,11 +69,15 @@ class HomeViewModel(
             val prefs = export?.preferences
             val freezeThreshold = export?.alertSettings?.freezeThresholdF ?: 34.0
             val history = historyRepository.load(days = 7).getOrNull()
+            val homeInsights = dashboardExtrasRepository.loadHomeInsights().getOrNull()
+            val doorEvents = dashboardExtrasRepository.loadDoorEvents().getOrNull()
+            val ingestStatus = dashboardExtrasRepository.loadIngestStatus().getOrNull()
             val outdoor = runCatching {
                 val cityId = prefs?.weatherCityId
                 val weatherResponse = api.weather(cityId)
                 if (weatherResponse.isSuccessful) weatherResponse.body()?.weather?.temp else null
             }.getOrNull()
+                ?: homeInsights?.weather?.tempF
 
             val points = history?.chart?.points.orEmpty()
             val insights = buildHeatingInsights(
@@ -83,6 +95,9 @@ class HomeViewModel(
                             readings = body,
                             insights = insights,
                             outdoorTempF = outdoor,
+                            homeInsights = homeInsights,
+                            doorSessions = doorEvents?.liveSessions.orEmpty(),
+                            ingestStatus = ingestStatus,
                             error = null,
                         )
                     }
@@ -94,6 +109,9 @@ class HomeViewModel(
                             refreshing = false,
                             insights = insights,
                             outdoorTempF = outdoor,
+                            homeInsights = homeInsights,
+                            doorSessions = doorEvents?.liveSessions.orEmpty(),
+                            ingestStatus = ingestStatus,
                             error = err.message ?: "Failed to load readings",
                         )
                     }
@@ -122,12 +140,19 @@ class HomeViewModel(
             readingsRepository: ReadingsRepository,
             historyRepository: HistoryRepository,
             settingsRepository: SettingsRepository,
+            dashboardExtrasRepository: DashboardExtrasRepository,
             api: ThermalTraceApi,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    HomeViewModel(readingsRepository, historyRepository, settingsRepository, api) as T
+                    HomeViewModel(
+                        readingsRepository,
+                        historyRepository,
+                        settingsRepository,
+                        dashboardExtrasRepository,
+                        api,
+                    ) as T
             }
     }
 }

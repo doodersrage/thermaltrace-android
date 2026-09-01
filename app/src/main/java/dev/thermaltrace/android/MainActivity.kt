@@ -1,6 +1,7 @@
 package dev.thermaltrace.android
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,10 +17,12 @@ import dev.thermaltrace.android.ui.theme.ThermalTraceTheme
 
 class MainActivity : ComponentActivity() {
     private var deepLinkDestination by mutableStateOf<String?>(null)
+    private var deepLinkEventId by mutableStateOf<Long?>(null)
+    private var oauthExchangeToken by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        deepLinkDestination = intent?.getStringExtra(DeepLinks.EXTRA_DESTINATION)
+        handleIntent(intent)
         enableEdgeToEdge()
         val container = (application as ThermalTraceApp).container
         setContent {
@@ -28,7 +31,13 @@ class MainActivity : ComponentActivity() {
                     ThermalTraceNav(
                         container = container,
                         deepLinkDestination = deepLinkDestination,
-                        onDeepLinkConsumed = { deepLinkDestination = null },
+                        deepLinkEventId = deepLinkEventId,
+                        oauthExchangeToken = oauthExchangeToken,
+                        onDeepLinkConsumed = {
+                            deepLinkDestination = null
+                            deepLinkEventId = null
+                        },
+                        onOAuthExchangeConsumed = { oauthExchangeToken = null },
                     )
                 }
             }
@@ -38,6 +47,25 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        val uri = intent.data
+        if (uri != null && uri.scheme == DeepLinks.OAUTH_SCHEME && uri.host == DeepLinks.OAUTH_HOST) {
+            uri.getQueryParameter(DeepLinks.OAUTH_EXCHANGE_PARAM)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { oauthExchangeToken = it }
+            return
+        }
         deepLinkDestination = intent.getStringExtra(DeepLinks.EXTRA_DESTINATION)
+        deepLinkEventId = intent.getStringExtra(DeepLinks.EXTRA_EVENT_ID)
+            ?.toLongOrNull()
+            ?: intent.getLongExtra(DeepLinks.EXTRA_EVENT_ID, -1L).takeIf { it >= 0 }
+    }
+
+    fun openOAuthUrl(url: String) {
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 }

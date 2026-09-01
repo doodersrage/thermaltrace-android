@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -23,8 +24,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -37,6 +40,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -64,6 +69,50 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
         }
         runCatching { context.startActivity(Intent.createChooser(intent, "Open claims pack")) }
         viewModel.clearClaimsFile()
+    }
+
+    if (state.emailDialogOpen) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissEmailDialog,
+            title = { Text("Email claims pack") },
+            text = {
+                Column {
+                    Text(
+                        "Send a printable claims pack to your adjuster.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.adjusterEmail,
+                        onValueChange = viewModel::onAdjusterEmailChange,
+                        label = { Text("Adjuster email") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    )
+                    state.emailMessage?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = viewModel::emailClaimsPack,
+                    enabled = !state.emailBusy,
+                ) {
+                    if (state.emailBusy) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.height(18.dp))
+                    } else {
+                        Text("Send")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissEmailDialog) { Text("Cancel") }
+            },
+        )
     }
 
     Scaffold(
@@ -135,6 +184,17 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
                         }
                     }
                     state.claimsMessage?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = viewModel::openEmailDialog,
+                        enabled = !state.emailBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Email claims pack to adjuster")
+                    }
+                    state.emailMessage?.takeIf { !state.emailDialogOpen }?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                     }
                 }

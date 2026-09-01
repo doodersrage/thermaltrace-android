@@ -22,6 +22,7 @@ data class AlertsUiState(
     val settings: AlertSettingsDto = AlertSettingsDto(),
     val events: List<AlertEventDto> = emptyList(),
     val unackedCount: Int = 0,
+    val highlightEventId: Long? = null,
     val message: String? = null,
     val error: String? = null,
 )
@@ -29,15 +30,22 @@ data class AlertsUiState(
 class AlertsViewModel(
     private val settingsRepository: SettingsRepository,
     private val inboxRepository: AlertsInboxRepository,
-    openInbox: Boolean = false,
+    highlightEventId: Long? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
-        AlertsUiState(tab = if (openInbox) AlertsTab.Inbox else AlertsTab.Inbox),
+        AlertsUiState(
+            tab = AlertsTab.Inbox,
+            highlightEventId = highlightEventId,
+        ),
     )
     val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
 
     init {
         refresh()
+    }
+
+    fun setHighlightEventId(eventId: Long?) {
+        _uiState.update { it.copy(highlightEventId = eventId) }
     }
 
     fun selectTab(tab: AlertsTab) {
@@ -88,7 +96,9 @@ class AlertsViewModel(
             _uiState.update { it.copy(saving = true, error = null, message = null) }
             inboxRepository.acknowledge(eventId).fold(
                 onSuccess = {
-                    _uiState.update { it.copy(saving = false, message = "Acknowledged") }
+                    _uiState.update {
+                        it.copy(saving = false, message = "Acknowledged", highlightEventId = null)
+                    }
                     refresh()
                 },
                 onFailure = { err ->
@@ -145,12 +155,12 @@ class AlertsViewModel(
         fun factory(
             settingsRepository: SettingsRepository,
             inboxRepository: AlertsInboxRepository,
-            openInbox: Boolean = false,
+            highlightEventId: Long? = null,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    AlertsViewModel(settingsRepository, inboxRepository, openInbox) as T
+                    AlertsViewModel(settingsRepository, inboxRepository, highlightEventId) as T
             }
     }
 }

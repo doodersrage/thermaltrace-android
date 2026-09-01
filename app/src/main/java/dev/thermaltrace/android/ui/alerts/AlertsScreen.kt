@@ -1,5 +1,6 @@
 package dev.thermaltrace.android.ui.alerts
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,6 +106,7 @@ fun AlertsScreen(viewModel: AlertsViewModel) {
                 state.tab == AlertsTab.Inbox -> InboxPane(
                     events = state.events,
                     saving = state.saving,
+                    highlightEventId = state.highlightEventId,
                     onAck = viewModel::acknowledge,
                     onTest = viewModel::sendTest,
                 )
@@ -116,10 +121,21 @@ fun AlertsScreen(viewModel: AlertsViewModel) {
 private fun InboxPane(
     events: List<AlertEventDto>,
     saving: Boolean,
+    highlightEventId: Long?,
     onAck: (Long) -> Unit,
     onTest: () -> Unit,
 ) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(events, highlightEventId) {
+        val targetId = highlightEventId ?: return@LaunchedEffect
+        val index = events.indexOfFirst { it.id == targetId }
+        if (index >= 0) {
+            listState.animateScrollToItem(index)
+        }
+    }
+
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -141,7 +157,23 @@ private fun InboxPane(
             }
         }
         items(events, key = { it.id }) { event ->
-            Column(Modifier.fillMaxWidth()) {
+            val highlighted = highlightEventId == event.id
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (highlighted) {
+                            Modifier.border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(if (highlighted) 8.dp else 0.dp),
+            ) {
                 Text(event.title, fontWeight = FontWeight.SemiBold)
                 Text(
                     listOfNotNull(event.kind, event.createdAt).joinToString(" · "),

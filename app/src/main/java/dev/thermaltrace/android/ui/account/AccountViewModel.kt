@@ -3,8 +3,10 @@ package dev.thermaltrace.android.ui.account
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dev.thermaltrace.android.data.api.DashboardExtrasRepository
 import dev.thermaltrace.android.data.api.SettingsRepository
 import dev.thermaltrace.android.data.auth.AuthRepository
+import dev.thermaltrace.android.data.model.ReferralResponse
 import dev.thermaltrace.android.data.model.UserPreferencesDto
 import dev.thermaltrace.android.data.push.PushRegistrar
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,8 @@ data class AccountUiState(
     val preferences: UserPreferencesDto = UserPreferencesDto(),
     val pushConfigured: Boolean = false,
     val pushBusy: Boolean = false,
+    val referral: ReferralResponse? = null,
+    val referralError: String? = null,
     val message: String? = null,
     val error: String? = null,
 )
@@ -28,6 +32,7 @@ class AccountViewModel(
     private val settingsRepository: SettingsRepository,
     private val authRepository: AuthRepository,
     private val pushRegistrar: PushRegistrar,
+    private val dashboardExtrasRepository: DashboardExtrasRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         AccountUiState(pushConfigured = pushRegistrar.isConfigured),
@@ -41,7 +46,9 @@ class AccountViewModel(
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null, message = null) }
-            settingsRepository.loadExport().fold(
+            val exportResult = settingsRepository.loadExport()
+            val referralResult = dashboardExtrasRepository.loadReferral()
+            exportResult.fold(
                 onSuccess = { export ->
                     _uiState.update {
                         it.copy(
@@ -49,16 +56,31 @@ class AccountViewModel(
                             email = export.user?.email,
                             preferences = export.preferences ?: UserPreferencesDto(),
                             pushConfigured = pushRegistrar.isConfigured,
+                            referral = referralResult.getOrNull(),
+                            referralError = referralResult.exceptionOrNull()?.message,
                         )
                     }
                 },
                 onFailure = { err ->
                     _uiState.update {
-                        it.copy(loading = false, error = err.message ?: "Failed to load account")
+                        it.copy(
+                            loading = false,
+                            referral = referralResult.getOrNull(),
+                            referralError = referralResult.exceptionOrNull()?.message,
+                            error = err.message ?: "Failed to load account",
+                        )
                     }
                 },
             )
         }
+    }
+
+    fun plansUrl(): String = authRepository.plansUrl()
+
+    fun referralShareText(): String? {
+        val referral = _uiState.value.referral ?: return null
+        return "Try ThermalTrace — freeze and leak monitoring for vacant homes. " +
+            "Sign up with my link for ${referral.bonusTrialDays} bonus trial days: ${referral.registerUrl}"
     }
 
     fun update(transform: (UserPreferencesDto) -> UserPreferencesDto) {
@@ -117,11 +139,17 @@ class AccountViewModel(
             settingsRepository: SettingsRepository,
             authRepository: AuthRepository,
             pushRegistrar: PushRegistrar,
+            dashboardExtrasRepository: DashboardExtrasRepository,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    AccountViewModel(settingsRepository, authRepository, pushRegistrar) as T
+                    AccountViewModel(
+                        settingsRepository,
+                        authRepository,
+                        pushRegistrar,
+                        dashboardExtrasRepository,
+                    ) as T
             }
     }
 }

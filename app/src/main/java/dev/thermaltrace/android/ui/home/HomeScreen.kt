@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.thermaltrace.android.data.insights.HeatingInsight
 import dev.thermaltrace.android.data.model.LiveSensor
+import dev.thermaltrace.android.data.model.NwsAlert
+import dev.thermaltrace.android.data.model.NightAtRisk
 import dev.thermaltrace.android.ui.theme.brandTitle
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -100,6 +102,56 @@ fun HomeScreen(viewModel: HomeViewModel) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                        }
+                    }
+
+                    state.ingestStatus?.takeIf { it.waiting }?.let { ingest ->
+                        item {
+                            IngestWaitingBanner(ingest)
+                        }
+                    }
+
+                    state.homeInsights?.nwsAlerts?.takeIf { it.isNotEmpty() }?.let { alerts ->
+                        item {
+                            Text(
+                                "Weather alerts",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        items(alerts, key = { it.headline + it.event }) { alert ->
+                            NwsAlertCard(alert)
+                        }
+                    }
+
+                    state.homeInsights?.nightsAtRisk?.takeIf { it.isNotEmpty() }?.let { nights ->
+                        item {
+                            Text(
+                                "Nights at risk",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "Forecast freeze risk for the next 7 nights.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        items(nights, key = { it.dateLabel }) { night ->
+                            NightAtRiskRow(night)
+                        }
+                    }
+
+                    state.doorSessions.takeIf { it.isNotEmpty() }?.let { sessions ->
+                        item {
+                            Text(
+                                "Door open sessions",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        items(sessions, key = { it.label + it.openedAt }) { session ->
+                            DoorSessionRow(session)
                         }
                     }
 
@@ -258,3 +310,90 @@ private fun formatSensorValue(sensor: LiveSensor): String {
 
 private fun formatNumber(value: Double): String =
     if (value % 1.0 == 0.0) value.toInt().toString() else String.format("%.1f", value)
+
+@Composable
+private fun IngestWaitingBanner(ingest: dev.thermaltrace.android.data.model.IngestStatusResponse) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.tertiary,
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Text("Waiting for first POST", fontWeight = FontWeight.SemiBold)
+        Text(
+            "${ingest.waitingCount} device(s) created but no data received yet.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        ingest.devices.take(3).forEach { device ->
+            Text(
+                "${device.name}: ${device.sensorKeys.joinToString()}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NwsAlertCard(alert: NwsAlert) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.error,
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Text(alert.event, fontWeight = FontWeight.SemiBold)
+        Text(alert.headline, style = MaterialTheme.typography.bodySmall)
+        Text(
+            listOfNotNull(alert.severity, alert.expires?.let { "Expires $it" }).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun NightAtRiskRow(night: NightAtRisk) {
+    Text(
+        "${night.dateLabel}: ${"%.1f".format(night.minTempF)}°F" +
+            if (night.atRisk) " — at risk" else "",
+        color = if (night.atRisk) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.bodyMedium,
+    )
+}
+
+@Composable
+private fun DoorSessionRow(session: dev.thermaltrace.android.data.model.DoorSession) {
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(session.label, fontWeight = FontWeight.Medium)
+        Text(
+            buildString {
+                append("Opened ${session.openedAt}")
+                if (session.stillOpen) append(" · still open")
+                session.durationMs?.let { append(" · ${formatDurationMs(it)}") }
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun formatDurationMs(ms: Long): String {
+    val minutes = ms / 60_000
+    val hours = minutes / 60
+    return when {
+        hours > 0 -> "${hours}h ${minutes % 60}m"
+        minutes > 0 -> "${minutes}m"
+        else -> "${ms / 1000}s"
+    }
+}

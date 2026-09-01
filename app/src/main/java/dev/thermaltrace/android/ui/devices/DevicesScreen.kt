@@ -1,5 +1,7 @@
 package dev.thermaltrace.android.ui.devices
 
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,16 +33,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.thermaltrace.android.data.model.DeviceSummary
+import dev.thermaltrace.android.data.model.IngestStatusResponse
+import dev.thermaltrace.android.data.model.ThermostatConnectionStatus
 import dev.thermaltrace.android.ui.theme.brandTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DevicesScreen(viewModel: DevicesViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    fun openConnectUrl(url: String?) {
+        url?.takeIf { it.isNotBlank() }?.let {
+            CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(it))
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -76,6 +88,40 @@ fun DevicesScreen(viewModel: DevicesViewModel) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                state.ingestStatus?.takeIf { it.waiting }?.let { ingest ->
+                    item { IngestWaitingCard(ingest) }
+                }
+
+                state.thermostat?.takeIf { it.canUse || it.canConnect }?.let { thermo ->
+                    item {
+                        Text("Thermostats", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                    if (thermo.connections.isNotEmpty()) {
+                        items(thermo.connections, key = { it.provider }) { connection ->
+                            ThermostatSnapshotCard(connection)
+                        }
+                    }
+                    if (thermo.canConnect) {
+                        item {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (!thermo.configured.nest) {
+                                    OutlinedButton(
+                                        onClick = { openConnectUrl(thermo.connectUrls?.nest) },
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Connect Nest") }
+                                }
+                                if (!thermo.configured.ecobee) {
+                                    OutlinedButton(
+                                        onClick = { openConnectUrl(thermo.connectUrls?.ecobee) },
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Connect Ecobee") }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 state.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
                 state.message?.let { item { Text(it, color = MaterialTheme.colorScheme.tertiary) } }
 
@@ -105,6 +151,42 @@ fun DevicesScreen(viewModel: DevicesViewModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun IngestWaitingCard(ingest: IngestStatusResponse) {
+    Column(Modifier.fillMaxWidth()) {
+        Text("Waiting for first POST", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.tertiary)
+        Text(
+            "${ingest.waitingCount} device(s) awaiting data.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ingest.devices.forEach { device ->
+            Text(
+                "${device.name} (${device.sensorKeys.joinToString()})",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThermostatSnapshotCard(connection: ThermostatConnectionStatus) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(connection.provider.replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.Medium)
+        Text(
+            listOfNotNull(
+                connection.ambientTempF?.let { "Ambient ${"%.1f".format(it)}°F" },
+                connection.heatSetpointF?.let { "Heat set ${"%.1f".format(it)}°F" },
+                connection.hvacMode,
+                connection.connectedAt?.let { "Since $it" },
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

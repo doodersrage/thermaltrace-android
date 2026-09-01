@@ -51,6 +51,7 @@ fun AccountScreen(
     viewModel: AccountViewModel,
     onOpenHousehold: () -> Unit = {},
     onOpenShare: () -> Unit = {},
+    onOpenPortfolio: () -> Unit = {},
     onSignedOut: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -101,6 +102,35 @@ fun AccountScreen(
 
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 state.message?.let { Text(it, color = MaterialTheme.colorScheme.tertiary) }
+
+                state.referral?.let { referral ->
+                    Text("Refer a friend", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Code: ${referral.code} · ${referral.signupCount} signup(s) · +${referral.bonusTrialDays} trial days",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            val text = viewModel.referralShareText() ?: return@OutlinedButton
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, text)
+                                    },
+                                    "Share referral link",
+                                ),
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Share referral link")
+                    }
+                }
+                state.referralError?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
 
                 Text("Push alerts", style = MaterialTheme.typography.titleMedium)
                 if (!state.pushConfigured) {
@@ -188,6 +218,22 @@ fun AccountScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Share links")
+                }
+                OutlinedButton(
+                    onClick = onOpenPortfolio,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Portfolio")
+                }
+                OutlinedButton(
+                    onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(viewModel.plansUrl())),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Plans & billing")
                 }
                 OutlinedButton(
                     onClick = {

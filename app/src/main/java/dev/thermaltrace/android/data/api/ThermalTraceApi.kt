@@ -3,11 +3,22 @@ package dev.thermaltrace.android.data.api
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dev.thermaltrace.android.data.model.AckResponse
 import dev.thermaltrace.android.data.model.AlertEventsResponse
+import dev.thermaltrace.android.data.model.ClaimsEmailRequest
+import dev.thermaltrace.android.data.model.ClaimsEmailResponse
+import dev.thermaltrace.android.data.model.DoorEventsResponse
 import dev.thermaltrace.android.data.model.HistoryResponse
+import dev.thermaltrace.android.data.model.HomeInsightsResponse
 import dev.thermaltrace.android.data.model.HomeReadingsResponse
 import dev.thermaltrace.android.data.model.HouseholdResponse
+import dev.thermaltrace.android.data.model.IngestStatusResponse
+import dev.thermaltrace.android.data.model.MobileExchangeResponse
+import dev.thermaltrace.android.data.model.MfaVerifyResponse
+import dev.thermaltrace.android.data.model.PortfolioResponse
+import dev.thermaltrace.android.data.model.ReferralResponse
 import dev.thermaltrace.android.data.model.ShareLinksResponse
+import dev.thermaltrace.android.data.model.SnoozeJsonResponse
 import dev.thermaltrace.android.data.model.TestAlertResponse
+import dev.thermaltrace.android.data.model.ThermostatStatusResponse
 import dev.thermaltrace.android.data.model.UserExportResponse
 import dev.thermaltrace.android.data.model.WeatherResponse
 import kotlinx.serialization.json.Json
@@ -66,6 +77,48 @@ interface ThermalTraceApi {
 
     @GET("api/share/manage")
     suspend fun shareLinks(): Response<ShareLinksResponse>
+
+    @GET("api/user/portfolio")
+    suspend fun portfolio(): Response<PortfolioResponse>
+
+    @GET("api/user/home-insights")
+    suspend fun homeInsights(): Response<HomeInsightsResponse>
+
+    @GET("api/user/door-events")
+    suspend fun doorEvents(): Response<DoorEventsResponse>
+
+    @GET("api/integrations/thermostat")
+    suspend fun thermostatStatus(): Response<ThermostatStatusResponse>
+
+    @GET("api/user/referral")
+    suspend fun referral(): Response<ReferralResponse>
+
+    @GET("api/devices/ingest-status")
+    suspend fun ingestStatus(): Response<IngestStatusResponse>
+
+    @Headers("Accept: application/json", "Content-Type: application/json")
+    @POST("api/auth/mobile/exchange")
+    suspend fun exchangeMobileOAuth(
+        @Body body: RequestBody,
+    ): Response<MobileExchangeResponse>
+
+    @Headers("Accept: application/json", "Content-Type: application/json")
+    @POST("api/auth/mfa-verify")
+    suspend fun verifyMfa(
+        @Body body: RequestBody,
+    ): Response<MfaVerifyResponse>
+
+    @Headers("Accept: application/json", "Content-Type: application/json")
+    @POST("api/claims/email")
+    suspend fun emailClaimsPack(
+        @Body body: ClaimsEmailRequest,
+    ): Response<ClaimsEmailResponse>
+
+    @Headers("Accept: application/json", "Content-Type: application/json")
+    @POST("api/user/alert-snooze")
+    suspend fun alertSnoozeJson(
+        @Body body: RequestBody,
+    ): Response<SnoozeJsonResponse>
 }
 
 fun createThermalTraceApi(
