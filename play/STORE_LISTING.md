@@ -19,17 +19,20 @@ Monitor probe temperatures and freeze alerts from your ThermalTrace account.
 
 ## Full description
 
-ThermalTrace is the Android companion for thermaltrace.dev. Sign in with your existing account to view live probe readings, history, alerts, devices, and household settings — the same data as the web dashboard.
+ThermalTrace is the Android companion for thermaltrace.dev. Sign in with your existing account to view live probe readings, history, alerts, devices, and household settings — the same account data as the web app.
 
 The phone does not collect temperature itself. Sensors stay on your ESP/home hardware; this app talks to ThermalTrace over HTTPS.
 
 Features:
 • Live home readings with space filters and auto-refresh
+• Heating and condensation insights on Home
 • History sparklines (24h / 7d / 30d)
 • Alert inbox, acknowledge, and threshold settings
 • Device rename and space assignment
 • Household members and invites
 • Optional push notifications (Pro) via Firebase Cloud Messaging
+
+For the full Overview Status strip (freeze hours, probe spread, indoor−outdoor ΔT) and Insights cards (doors, power, air quality, RSSI), open the web dashboard at https://thermaltrace.dev/dashboard — charts there can also overlay humidity and dew point.
 
 Account required. Create or manage your account at https://thermaltrace.dev
 
