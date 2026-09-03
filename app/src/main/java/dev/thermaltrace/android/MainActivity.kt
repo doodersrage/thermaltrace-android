@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
@@ -53,10 +54,9 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
         val uri = intent.data
-        if (uri != null && uri.scheme == DeepLinks.OAUTH_SCHEME && uri.host == DeepLinks.OAUTH_HOST) {
-            uri.getQueryParameter(DeepLinks.OAUTH_EXCHANGE_PARAM)
-                ?.takeIf { it.isNotBlank() }
-                ?.let { oauthExchangeToken = it }
+        val exchange = oauthExchangeFrom(uri)
+        if (exchange != null) {
+            oauthExchangeToken = exchange
             return
         }
         deepLinkDestination = intent.getStringExtra(DeepLinks.EXTRA_DESTINATION)
@@ -65,7 +65,24 @@ class MainActivity : ComponentActivity() {
             ?: intent.getLongExtra(DeepLinks.EXTRA_EVENT_ID, -1L).takeIf { it >= 0 }
     }
 
+    private fun oauthExchangeFrom(uri: Uri?): String? {
+        if (uri == null) return null
+        val customScheme =
+            uri.scheme == DeepLinks.OAUTH_SCHEME && uri.host == DeepLinks.OAUTH_HOST
+        val httpsAppLink =
+            uri.scheme == "https" &&
+                uri.host == DeepLinks.OAUTH_HTTPS_HOST &&
+                (uri.path == DeepLinks.OAUTH_HTTPS_PATH || uri.path?.startsWith("${DeepLinks.OAUTH_HTTPS_PATH}/") == true)
+        if (!customScheme && !httpsAppLink) return null
+        return uri.getQueryParameter(DeepLinks.OAUTH_EXCHANGE_PARAM)?.takeIf { it.isNotBlank() }
+    }
+
     fun openOAuthUrl(url: String) {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        // Custom Tabs keep the app underneath; after Google/YubiKey, /app/oauth
+        // can hand back via intent:// more reliably than a detached Chrome tab.
+        CustomTabsIntent.Builder()
+            .setShowTitle(true)
+            .build()
+            .launchUrl(this, Uri.parse(url))
     }
 }

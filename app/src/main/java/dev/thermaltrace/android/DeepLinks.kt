@@ -14,5 +14,7 @@ object DeepLinks {
 
     const val OAUTH_SCHEME = "dev.thermaltrace.android"
     const val OAUTH_HOST = "oauth"
+    const val OAUTH_HTTPS_HOST = "thermaltrace.dev"
+    const val OAUTH_HTTPS_PATH = "/app/oauth"
     const val OAUTH_EXCHANGE_PARAM = "exchange"
 }

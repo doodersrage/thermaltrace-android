@@ -64,10 +64,22 @@ class AuthRepository(
         runCatching { pushRegistrar.registerWithServer() }
     }
 
-    private suspend fun persistSession(accessToken: String, refreshToken: String) {
-        sessionStore.save(SessionTokens(accessToken, refreshToken))
+    private suspend fun persistSession(
+        accessToken: String,
+        refreshToken: String,
+        mfaSatisfied: Boolean,
+    ) {
+        sessionStore.save(
+            SessionTokens(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                mfaSatisfied = mfaSatisfied,
+            ),
+        )
         cookieJar.syncFromSession()
-        runCatching { pushRegistrar.registerWithServer() }
+        if (mfaSatisfied) {
+            runCatching { pushRegistrar.registerWithServer() }
+        }
     }
 
     suspend fun signIn(email: String, password: String): Result<AuthOutcome> {
@@ -85,9 +97,14 @@ class AuthRepository(
             }
             val session = supabase.auth.currentSessionOrNull()
                 ?: error("Sign-in succeeded but no session was returned")
-            persistSession(session.accessToken, session.refreshToken)
+            val needsMfa = needsMfaStepUp(supabase)
+            persistSession(
+                session.accessToken,
+                session.refreshToken,
+                mfaSatisfied = !needsMfa,
+            )
             AuthOutcome(
-                needsMfa = needsMfaStepUp(supabase),
+                needsMfa = needsMfa,
                 accessToken = session.accessToken,
                 refreshToken = session.refreshToken,
             )
@@ -103,7 +120,11 @@ class AuthRepository(
             }
             val session = supabase.auth.currentSessionOrNull()
             if (session != null) {
-                persistSession(session.accessToken, session.refreshToken)
+                persistSession(
+                    session.accessToken,
+                    session.refreshToken,
+                    mfaSatisfied = !needsMfaStepUp(supabase),
+                )
             }
         }
     }
@@ -131,7 +152,6 @@ class AuthRepository(
         }
         val access = payload.accessToken ?: error("Missing access token")
         val refresh = payload.refreshToken ?: error("Missing refresh token")
-        persistSession(access, refresh)
         client?.auth?.importSession(
             io.github.jan.supabase.auth.user.UserSession(
                 accessToken = access,
@@ -141,8 +161,10 @@ class AuthRepository(
                 user = null,
             ),
         )
+        val needsMfa = client?.let { needsMfaStepUp(it) } ?: false
+        persistSession(access, refresh, mfaSatisfied = !needsMfa)
         AuthOutcome(
-            needsMfa = client?.let { needsMfaStepUp(it) } ?: false,
+            needsMfa = needsMfa,
             accessToken = access,
             refreshToken = refresh,
         )
@@ -165,7 +187,7 @@ class AuthRepository(
         }
         val access = payload.accessToken ?: error("Missing access token")
         val refresh = payload.refreshToken ?: error("Missing refresh token")
-        persistSession(access, refresh)
+        persistSession(access, refresh, mfaSatisfied = true)
     }
 
     fun plansUrl(): String = "${BuildConfig.THERMALTRACE_BASE_URL.trimEnd('/')}/dashboard/plans"
