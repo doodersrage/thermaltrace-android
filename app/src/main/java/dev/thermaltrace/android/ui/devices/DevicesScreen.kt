@@ -103,20 +103,36 @@ fun DevicesScreen(viewModel: DevicesViewModel) {
                         }
                     }
                     if (thermo.canConnect) {
-                        item {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (!thermo.configured.nest) {
-                                    OutlinedButton(
-                                        onClick = { openConnectUrl(thermo.connectUrls?.nest) },
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Connect Nest") }
+                        val nestConnected = thermo.connections.any { it.provider == "nest" }
+                        val ecobeeConnected = thermo.connections.any { it.provider == "ecobee" }
+                        val nestUrl = thermo.connectUrls?.nest?.takeIf { thermo.configured.nest }
+                        val ecobeeUrl = thermo.connectUrls?.ecobee?.takeIf { thermo.configured.ecobee }
+                        val showNest = !nestConnected && nestUrl != null
+                        val showEcobee = !ecobeeConnected && ecobeeUrl != null
+                        if (showNest || showEcobee) {
+                            item {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (showNest) {
+                                        OutlinedButton(
+                                            onClick = { openConnectUrl(nestUrl) },
+                                            modifier = Modifier.weight(1f),
+                                        ) { Text("Connect Nest") }
+                                    }
+                                    if (showEcobee) {
+                                        OutlinedButton(
+                                            onClick = { openConnectUrl(ecobeeUrl) },
+                                            modifier = Modifier.weight(1f),
+                                        ) { Text("Connect Ecobee") }
+                                    }
                                 }
-                                if (!thermo.configured.ecobee) {
-                                    OutlinedButton(
-                                        onClick = { openConnectUrl(thermo.connectUrls?.ecobee) },
-                                        modifier = Modifier.weight(1f),
-                                    ) { Text("Connect Ecobee") }
-                                }
+                            }
+                        } else if (!nestConnected && !ecobeeConnected) {
+                            item {
+                                Text(
+                                    "Thermostat OAuth is not configured on this deployment yet.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
