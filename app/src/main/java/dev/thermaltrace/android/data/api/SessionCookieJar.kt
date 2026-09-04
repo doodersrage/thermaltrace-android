@@ -1,6 +1,7 @@
 package dev.thermaltrace.android.data.api
 
 import android.util.Log
+import dev.thermaltrace.android.BuildConfig
 import dev.thermaltrace.android.data.auth.SessionStore
 import dev.thermaltrace.android.data.auth.SessionTokens
 import kotlinx.coroutines.runBlocking
@@ -20,22 +21,21 @@ class SessionCookieJar(
     @Volatile
     private var memoryCookies: List<Cookie> = emptyList()
 
+    @Volatile
+    private var cachedTokens: SessionTokens? = null
+
     fun syncFromSession() {
         val tokens = runBlocking { sessionStore.current() } ?: run {
+            cachedTokens = null
             memoryCookies = emptyList()
             return
         }
-        val cookies = mutableListOf(
-            buildCookie(ACCESS_COOKIE, tokens.accessToken),
-            buildCookie(REFRESH_COOKIE, tokens.refreshToken),
-        )
-        if (tokens.mfaSatisfied) {
-            cookies += buildCookie(MFA_COOKIE, MFA_SATISFIED_VALUE)
-        }
-        memoryCookies = cookies
+        cachedTokens = tokens
+        applyTokens(tokens)
     }
 
     fun clear() {
+        cachedTokens = null
         memoryCookies = emptyList()
     }
 
@@ -53,30 +53,45 @@ class SessionCookieJar(
         if (access.isNullOrBlank() || refresh.isNullOrBlank()) return
 
         val mfaValue = kept[MFA_COOKIE]?.value
-        val existing = runBlocking { sessionStore.current() }
+        val existing = cachedTokens ?: runBlocking { sessionStore.current() }
         val mfaSatisfied = when (mfaValue) {
             MFA_SATISFIED_VALUE -> true
             MFA_REQUIRED_VALUE -> false
             else -> existing?.mfaSatisfied == true
         }
-        runBlocking {
-            sessionStore.save(
-                SessionTokens(
-                    accessToken = access,
-                    refreshToken = refresh,
-                    mfaSatisfied = mfaSatisfied,
-                ),
-            )
-        }
+        val tokens = SessionTokens(
+            accessToken = access,
+            refreshToken = refresh,
+            mfaSatisfied = mfaSatisfied,
+        )
+        cachedTokens = tokens
+        runBlocking { sessionStore.save(tokens) }
     }
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         if (!url.host.endsWith(baseHost)) return emptyList()
         if (memoryCookies.isEmpty()) {
-            syncFromSession()
+            val tokens = cachedTokens ?: runBlocking { sessionStore.current() }
+            if (tokens != null) {
+                cachedTokens = tokens
+                applyTokens(tokens)
+            }
         }
-        Log.d(TAG, "Attaching ${memoryCookies.size} session cookies to ${url.encodedPath}")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Attaching ${memoryCookies.size} session cookies to ${url.encodedPath}")
+        }
         return memoryCookies
+    }
+
+    private fun applyTokens(tokens: SessionTokens) {
+        val cookies = mutableListOf(
+            buildCookie(ACCESS_COOKIE, tokens.accessToken),
+            buildCookie(REFRESH_COOKIE, tokens.refreshToken),
+        )
+        if (tokens.mfaSatisfied) {
+            cookies += buildCookie(MFA_COOKIE, MFA_SATISFIED_VALUE)
+        }
+        memoryCookies = cookies
     }
 
     private fun buildCookie(name: String, value: String): Cookie =

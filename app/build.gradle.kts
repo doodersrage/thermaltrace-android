@@ -27,14 +27,14 @@ fun localProp(key: String, default: String = ""): String =
 
 android {
     namespace = "dev.thermaltrace.android"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.thermaltrace.android"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 2
-        versionName = "1.2.0"
+        targetSdk = 36
+        versionCode = 3
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -78,6 +78,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Include stripped native symbols in the AAB for Play Crashlytics / Vitals.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }

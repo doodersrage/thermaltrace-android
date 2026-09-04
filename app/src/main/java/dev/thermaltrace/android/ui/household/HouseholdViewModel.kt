@@ -39,7 +39,9 @@ class HouseholdViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null, message = null) }
+            val keepContent = _uiState.value.members.isNotEmpty() ||
+                _uiState.value.households.isNotEmpty()
+            _uiState.update { it.copy(loading = !keepContent, error = null, message = null) }
             householdRepository.load().fold(
                 onSuccess = { data ->
                     val activeName = data.households

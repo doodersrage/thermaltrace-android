@@ -58,8 +58,12 @@ class AppContainer(context: Context) {
 
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectionPool(okhttp3.ConnectionPool(8, 5, TimeUnit.MINUTES))
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .callTimeout(35, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .addInterceptor(loggingInterceptor)
         .build()
 

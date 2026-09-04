@@ -7,6 +7,8 @@ import dev.thermaltrace.android.data.api.AlertsInboxRepository
 import dev.thermaltrace.android.data.api.SettingsRepository
 import dev.thermaltrace.android.data.model.AlertEventDto
 import dev.thermaltrace.android.data.model.AlertSettingsDto
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,18 +56,25 @@ class AlertsViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
-            val settingsResult = settingsRepository.loadExport()
-            val eventsResult = inboxRepository.listEvents()
-            _uiState.update { state ->
-                state.copy(
-                    loading = false,
-                    settings = settingsResult.getOrNull()?.alertSettings ?: state.settings,
-                    events = eventsResult.getOrNull()?.first ?: state.events,
-                    unackedCount = eventsResult.getOrNull()?.second ?: state.unackedCount,
-                    error = settingsResult.exceptionOrNull()?.message
-                        ?: eventsResult.exceptionOrNull()?.message,
-                )
+            val keepContent = _uiState.value.events.isNotEmpty()
+            _uiState.update {
+                it.copy(loading = !keepContent, error = null)
+            }
+            coroutineScope {
+                val settingsDeferred = async { settingsRepository.loadExport() }
+                val eventsDeferred = async { inboxRepository.listEvents() }
+                val settingsResult = settingsDeferred.await()
+                val eventsResult = eventsDeferred.await()
+                _uiState.update { state ->
+                    state.copy(
+                        loading = false,
+                        settings = settingsResult.getOrNull()?.alertSettings ?: state.settings,
+                        events = eventsResult.getOrNull()?.first ?: state.events,
+                        unackedCount = eventsResult.getOrNull()?.second ?: state.unackedCount,
+                        error = settingsResult.exceptionOrNull()?.message
+                            ?: eventsResult.exceptionOrNull()?.message,
+                    )
+                }
             }
         }
     }

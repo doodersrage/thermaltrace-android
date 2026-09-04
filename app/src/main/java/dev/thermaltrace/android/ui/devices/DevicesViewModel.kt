@@ -9,6 +9,8 @@ import dev.thermaltrace.android.data.model.DeviceSummary
 import dev.thermaltrace.android.data.model.IngestStatusResponse
 import dev.thermaltrace.android.data.model.ThermostatStatusResponse
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +39,7 @@ class DevicesViewModel(
     private val _uiState = MutableStateFlow(DevicesUiState())
     val uiState: StateFlow<DevicesUiState> = _uiState.asStateFlow()
     private var pollJob: Job? = null
+    private var refreshJob: Job? = null
 
     init {
         refresh()
@@ -44,33 +47,48 @@ class DevicesViewModel(
     }
 
     fun refresh() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null, message = null) }
-            val devicesResult = devicesRepository.listDevices()
-            val thermostat = dashboardExtrasRepository.loadThermostatStatus().getOrNull()
-            val ingest = dashboardExtrasRepository.loadIngestStatus().getOrNull()
-            devicesResult.fold(
-                onSuccess = { list ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            devices = list,
-                            thermostat = thermostat,
-                            ingestStatus = ingest,
-                        )
-                    }
-                },
-                onFailure = { err ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            thermostat = thermostat,
-                            ingestStatus = ingest,
-                            error = err.message ?: "Failed to load devices",
-                        )
-                    }
-                },
-            )
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            val hasData = _uiState.value.devices.isNotEmpty()
+            _uiState.update {
+                it.copy(
+                    loading = !hasData,
+                    error = null,
+                    message = null,
+                )
+            }
+            coroutineScope {
+                val devicesDeferred = async { devicesRepository.listDevices() }
+                val thermostatDeferred = async { dashboardExtrasRepository.loadThermostatStatus() }
+                val ingestDeferred = async { dashboardExtrasRepository.loadIngestStatus() }
+
+                val devicesResult = devicesDeferred.await()
+                val thermostat = thermostatDeferred.await().getOrNull()
+                val ingest = ingestDeferred.await().getOrNull()
+
+                devicesResult.fold(
+                    onSuccess = { list ->
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                devices = list,
+                                thermostat = thermostat ?: it.thermostat,
+                                ingestStatus = ingest ?: it.ingestStatus,
+                            )
+                        }
+                    },
+                    onFailure = { err ->
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                thermostat = thermostat ?: it.thermostat,
+                                ingestStatus = ingest ?: it.ingestStatus,
+                                error = err.message ?: "Failed to load devices",
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 
@@ -144,6 +162,7 @@ class DevicesViewModel(
 
     override fun onCleared() {
         pollJob?.cancel()
+        refreshJob?.cancel()
         super.onCleared()
     }
 

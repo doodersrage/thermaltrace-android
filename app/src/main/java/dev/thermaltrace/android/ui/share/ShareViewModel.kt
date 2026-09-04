@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import dev.thermaltrace.android.data.api.SettingsRepository
 import dev.thermaltrace.android.data.api.ShareRepository
 import dev.thermaltrace.android.data.model.ShareLinkDto
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,16 +45,23 @@ class ShareViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
-            val entitlements = settingsRepository.loadExport().getOrNull()?.entitlements
-            val linksResult = shareRepository.listLinks()
-            _uiState.update { state ->
-                state.copy(
-                    loading = false,
-                    canCreate = entitlements?.canCreateShareLinks == true,
-                    links = linksResult.getOrElse { state.links },
-                    error = linksResult.exceptionOrNull()?.message,
-                )
+            val keepContent = _uiState.value.links.isNotEmpty()
+            _uiState.update { it.copy(loading = !keepContent, error = null) }
+            coroutineScope {
+                val entitlementsDeferred = async {
+                    settingsRepository.loadExport().getOrNull()?.entitlements
+                }
+                val linksDeferred = async { shareRepository.listLinks() }
+                val entitlements = entitlementsDeferred.await()
+                val linksResult = linksDeferred.await()
+                _uiState.update { state ->
+                    state.copy(
+                        loading = false,
+                        canCreate = entitlements?.canCreateShareLinks == true,
+                        links = linksResult.getOrElse { state.links },
+                        error = linksResult.exceptionOrNull()?.message,
+                    )
+                }
             }
         }
     }

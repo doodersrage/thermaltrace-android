@@ -9,6 +9,8 @@ import dev.thermaltrace.android.data.api.HistoryRepository
 import dev.thermaltrace.android.data.api.SettingsRepository
 import dev.thermaltrace.android.data.model.ChartPointDto
 import dev.thermaltrace.android.data.model.HistoryReadingDto
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,32 +51,41 @@ class HistoryViewModel(
 
     fun refresh(days: Int = _uiState.value.days) {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, days = days, error = null, claimsMessage = null) }
-            val entitlements = settingsRepository.loadExport().getOrNull()?.entitlements
-            historyRepository.load(days = days).fold(
-                onSuccess = { body ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            points = body.chart?.points.orEmpty(),
-                            housePoints = body.houseOverlay?.points.orEmpty(),
-                            houseOverlaySource = body.houseOverlay?.source,
-                            readings = body.readings?.readings.orEmpty(),
-                            canUseClaimsPack = entitlements?.canUseClaimsPack == true,
-                            error = body.chart?.error ?: body.readings?.error,
-                        )
-                    }
-                },
-                onFailure = { err ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            canUseClaimsPack = entitlements?.canUseClaimsPack == true,
-                            error = err.message ?: "Failed to load history",
-                        )
-                    }
-                },
-            )
+            val keepContent = _uiState.value.points.isNotEmpty() || _uiState.value.readings.isNotEmpty()
+            _uiState.update {
+                it.copy(loading = !keepContent, days = days, error = null, claimsMessage = null)
+            }
+            coroutineScope {
+                val entitlementsDeferred = async {
+                    settingsRepository.loadExport().getOrNull()?.entitlements
+                }
+                val historyDeferred = async { historyRepository.load(days = days) }
+                val entitlements = entitlementsDeferred.await()
+                historyDeferred.await().fold(
+                    onSuccess = { body ->
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                points = body.chart?.points.orEmpty(),
+                                housePoints = body.houseOverlay?.points.orEmpty(),
+                                houseOverlaySource = body.houseOverlay?.source,
+                                readings = body.readings?.readings.orEmpty(),
+                                canUseClaimsPack = entitlements?.canUseClaimsPack == true,
+                                error = body.chart?.error ?: body.readings?.error,
+                            )
+                        }
+                    },
+                    onFailure = { err ->
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                canUseClaimsPack = entitlements?.canUseClaimsPack == true,
+                                error = err.message ?: "Failed to load history",
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 

@@ -33,7 +33,8 @@ class PortfolioViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null, message = null) }
+            val keepContent = _uiState.value.properties.isNotEmpty()
+            _uiState.update { it.copy(loading = !keepContent, error = null, message = null) }
             dashboardExtrasRepository.loadPortfolio().fold(
                 onSuccess = { body ->
                     _uiState.update {

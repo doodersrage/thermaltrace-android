@@ -9,6 +9,8 @@ import dev.thermaltrace.android.data.auth.AuthRepository
 import dev.thermaltrace.android.data.model.ReferralResponse
 import dev.thermaltrace.android.data.model.UserPreferencesDto
 import dev.thermaltrace.android.data.push.PushRegistrar
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,33 +47,38 @@ class AccountViewModel(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null, message = null) }
-            val exportResult = settingsRepository.loadExport()
-            val referralResult = dashboardExtrasRepository.loadReferral()
-            exportResult.fold(
-                onSuccess = { export ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            email = export.user?.email,
-                            preferences = export.preferences ?: UserPreferencesDto(),
-                            pushConfigured = pushRegistrar.isConfigured,
-                            referral = referralResult.getOrNull(),
-                            referralError = referralResult.exceptionOrNull()?.message,
-                        )
-                    }
-                },
-                onFailure = { err ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            referral = referralResult.getOrNull(),
-                            referralError = referralResult.exceptionOrNull()?.message,
-                            error = err.message ?: "Failed to load account",
-                        )
-                    }
-                },
-            )
+            val keepContent = !_uiState.value.email.isNullOrBlank()
+            _uiState.update { it.copy(loading = !keepContent, error = null, message = null) }
+            coroutineScope {
+                val exportDeferred = async { settingsRepository.loadExport() }
+                val referralDeferred = async { dashboardExtrasRepository.loadReferral() }
+                val exportResult = exportDeferred.await()
+                val referralResult = referralDeferred.await()
+                exportResult.fold(
+                    onSuccess = { export ->
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                email = export.user?.email,
+                                preferences = export.preferences ?: UserPreferencesDto(),
+                                pushConfigured = pushRegistrar.isConfigured,
+                                referral = referralResult.getOrNull(),
+                                referralError = referralResult.exceptionOrNull()?.message,
+                            )
+                        }
+                    },
+                    onFailure = { err ->
+                        _uiState.update {
+                            it.copy(
+                                loading = false,
+                                referral = referralResult.getOrNull(),
+                                referralError = referralResult.exceptionOrNull()?.message,
+                                error = err.message ?: "Failed to load account",
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 
@@ -129,6 +136,7 @@ class AccountViewModel(
 
     fun signOut(onSignedOut: () -> Unit) {
         viewModelScope.launch {
+            settingsRepository.invalidateCache()
             authRepository.signOut()
             onSignedOut()
         }
