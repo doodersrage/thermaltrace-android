@@ -31,6 +31,20 @@ data class HomeInsightsResponse(
     val house: HouseInsightDto? = null,
     @SerialName("regional_benchmark") val regionalBenchmark: RegionalBenchmarkDto? = null,
     val weather: InsightWeather? = null,
+    @SerialName("time_to_freeze") val timeToFreeze: TimeToFreezeDto? = null,
+)
+
+@Serializable
+data class TimeToFreezeDto(
+    val hours: Double? = null,
+    @SerialName("hits_at") val hitsAt: String? = null,
+    @SerialName("hits_at_label") val hitsAtLabel: String? = null,
+    val confidence: String? = null,
+    val source: String? = null,
+    val message: String? = null,
+    @SerialName("rate_f_per_hour") val rateFPerHour: Double? = null,
+    @SerialName("freeze_threshold_f") val freezeThresholdF: Double? = null,
+    @SerialName("current_temp_f") val currentTempF: Double? = null,
 )
 
 @Serializable

@@ -41,6 +41,7 @@ import dev.thermaltrace.android.data.model.HouseInsightDto
 import dev.thermaltrace.android.data.model.LiveSensor
 import dev.thermaltrace.android.data.model.NwsAlert
 import dev.thermaltrace.android.data.model.NightAtRisk
+import dev.thermaltrace.android.data.model.TimeToFreezeDto
 import dev.thermaltrace.android.ui.theme.brandTitle
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -109,6 +110,12 @@ fun HomeScreen(viewModel: HomeViewModel) {
                     state.ingestStatus?.takeIf { it.waiting }?.let { ingest ->
                         item {
                             IngestWaitingBanner(ingest)
+                        }
+                    }
+
+                    state.homeInsights?.timeToFreeze?.let { runway ->
+                        item {
+                            TimeToFreezeCard(runway)
                         }
                     }
 
@@ -244,6 +251,74 @@ fun HomeScreen(viewModel: HomeViewModel) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TimeToFreezeCard(runway: TimeToFreezeDto) {
+    val threshold = runway.freezeThresholdF ?: 34.0
+    val clock = when {
+        runway.hours == 0.0 -> "At ${formatNumber(threshold)}°F now"
+        !runway.hitsAtLabel.isNullOrBlank() ->
+            "Hits ${formatNumber(threshold)}°F around ${runway.hitsAtLabel}"
+        else -> null
+    }
+    val sourceLabel = when (runway.source) {
+        "forecast_model" -> "Forecast-backed from this space"
+        "trend" -> "Cooling-rate estimate"
+        "already_below" -> "At threshold now"
+        else -> "Not enough data yet"
+    }
+    val confidenceLabel = when (runway.confidence) {
+        "high" -> "High confidence"
+        "medium" -> "Medium confidence"
+        "low" -> "Low confidence"
+        else -> null
+    }
+    val cooling = runway.rateFPerHour?.takeIf { it < -0.05 }?.let {
+        "Cooling ${String.format("%.1f", kotlin.math.abs(it))}°F/hr"
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(12.dp),
+    ) {
+        Text("Time to freeze", fontWeight = FontWeight.SemiBold)
+        Text(
+            "$sourceLabel vs your ${formatNumber(threshold)}°F threshold.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        clock?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        runway.message?.takeIf { it.isNotBlank() }?.let { message ->
+            Text(
+                message,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        listOfNotNull(confidenceLabel, cooling).takeIf { it.isNotEmpty() }?.let { meta ->
+            Text(
+                meta.joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }

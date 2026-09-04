@@ -37,13 +37,13 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk   # Linux; use a JDK 17–23 insta
 
 1. Email/password via Supabase (`signInWithPassword`).
 2. Access + refresh tokens are stored locally and attached as cookies on `thermaltrace.dev` requests (same contract as the web dashboard).
-3. Home: `GET /api/home/readings?save=0` plus heating/condensation insights from history chart + weather
+3. Home: `GET /api/home/readings?save=0` plus heating/condensation insights and **time-to-freeze** from `GET /api/user/home-insights`
 4. History: `GET /api/user/history` and Pro claims pack download via `GET /api/claims/pack`
 5. Settings load: `GET /api/user/export` (preferences + alert settings + entitlements)
 6. Settings save: form `POST` to `/api/user/preferences`, `/api/user/alert-settings`, `/api/user/alert-snooze` (variable hours/days)
 7. Share links: `GET`/`POST` `/api/share/manage` (Pro)
 
-**Web Overview parity:** The phone home screen covers live readings plus heating/condensation insights. Full Overview Status metrics (freeze hours, indoor−outdoor ΔT, probe spread, feed health) and Insights cards (door/power/motion, air quality, RSSI, energy, flood/level) live on the [web dashboard](https://thermaltrace.dev/dashboard) — including optional humidity/dew overlays on week charts.
+**Web Overview parity:** The phone home screen covers live readings, time-to-freeze, and heating/condensation insights. Full Overview Status metrics (freeze hours, indoor−outdoor ΔT, probe spread, feed health) and Insights cards (door/power/motion, air quality, RSSI, energy, flood/level) live on the [web dashboard](https://thermaltrace.dev/dashboard) — including optional humidity/dew overlays on week charts.
 
 ## Project layout
 
