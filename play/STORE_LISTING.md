@@ -32,7 +32,7 @@ Features:
 • Household members and invites
 • Optional push notifications (Pro) via Firebase Cloud Messaging
 
-For the full Overview Status strip (freeze hours, probe spread, indoor−outdoor ΔT) and Insights cards (doors, power, air quality, RSSI), open the web dashboard at https://thermaltrace.dev/dashboard — charts there can also overlay humidity and dew point.
+For the full Overview Status strip (freeze hours, probe spread, indoor−outdoor ΔT) and Insights cards (doors, power, air quality, RSSI), open the web Overview at https://thermaltrace.dev/dashboard — live probe cards on the web are at https://thermaltrace.dev/dashboard/live. Charts on Overview/History can overlay humidity and dew point.
 
 Account required. Create or manage your account at https://thermaltrace.dev
 

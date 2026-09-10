@@ -43,7 +43,7 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk   # Linux; use a JDK 17–23 insta
 6. Settings save: form `POST` to `/api/user/preferences`, `/api/user/alert-settings`, `/api/user/alert-snooze` (variable hours/days)
 7. Share links: `GET`/`POST` `/api/share/manage` (Pro)
 
-**Web Overview parity:** The phone home screen covers live readings, time-to-freeze, and heating/condensation insights. Full Overview Status metrics (freeze hours, indoor−outdoor ΔT, probe spread, feed health) and Insights cards (door/power/motion, air quality, RSSI, energy, flood/level) live on the [web dashboard](https://thermaltrace.dev/dashboard) — including optional humidity/dew overlays on week charts.
+**Web Overview parity:** The phone home screen covers live readings, time-to-freeze, and heating/condensation insights (same APIs as web Live). Full Overview Status metrics (freeze hours, indoor−outdoor ΔT, probe spread, feed health) and Insights cards (door/power/motion, air quality, RSSI, energy, flood/level) live on the [web Overview](https://thermaltrace.dev/dashboard) — current probe cards on the web are at [Live](https://thermaltrace.dev/dashboard/live). Week charts can overlay humidity and dew point.
 
 ## Project layout
 
