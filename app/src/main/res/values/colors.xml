@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#090B0F</color>
-    <color name="brand_navy">#090B0F</color>
+    <color name="ic_launcher_background">#2F3A45</color>
+    <color name="brand_navy">#2F3A45</color>
     <color name="brand_trace">#E85500</color>
     <color name="brand_thermal">#C5CBD3</color>
     <color name="brand_accent">#FF9E4A</color>
